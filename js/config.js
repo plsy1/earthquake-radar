@@ -4,6 +4,22 @@ export const SRC = "https://www.jma.go.jp/bosai/quake/data/list.json";
 // Each report in the list names a detail file under this folder.
 export const DETAIL_BASE = "https://www.jma.go.jp/bosai/quake/data/";
 export const REFRESH_MS = 60_000;
+
+// USGS catalog (FDSN event service), limited to the area around Japan.
+export const USGS_URL = "https://earthquake.usgs.gov/fdsnws/event/1/query";
+export const USGS_BBOX = { minLat: 20, maxLat: 50, minLon: 120, maxLon: 156 };
+// A year of data is large; refresh it less often.
+export const USGS_YEAR_REFRESH_MS = 10 * 60_000;
+
+// USGS view colors circles by hypocenter depth (km), shallow = warm.
+export const DEPTH_BANDS = [
+  { max: 30, label: "<30", color: "#d7301f", dark: false },
+  { max: 70, label: "30–70", color: "#fc8d59", dark: true },
+  { max: 150, label: "70–150", color: "#fee08b", dark: true },
+  { max: 300, label: "150–300", color: "#91cf60", dark: true },
+  { max: Infinity, label: "300+", color: "#4575b4", dark: false },
+];
+export const depthBand = (d) => DEPTH_BANDS.find((b) => (d ?? 0) < b.max) || DEPTH_BANDS[0];
 export const NEAR_KM = 100;
 // In the detail panel, the closest station within this distance stands in for "my location".
 export const NEARBY_STATION_KM = 40;

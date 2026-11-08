@@ -9,6 +9,7 @@
   并标出 100 km 范围。位置只保存在你自己的浏览器里，不设置也能正常使用
 - 点击列表或地图上的地震，可以看这次地震的详情：各观测点的震度分布图、按震度分组的市区町村、
   海啸说明，以及离"我的位置"最近的观测点测到的震度
+- 可以切换到 **USGS** 数据：包括无感地震和海上地震，可以看最近 1 年，按最小震级筛选，颜色表示震源深度
 - 可以叠加南海海槽巨大地震设想震源区的大致轮廓
 - 界面支持中文、日本語、English，首次打开按浏览器语言自动选择，可以在右上角切换。
   英文界面使用气象厅提供的英文地名
@@ -34,6 +35,7 @@ css/style.css     样式（浅色 / 深色）
 js/main.js        入口：页面状态、事件绑定、定时刷新
 js/config.js      常量：数据地址、震度配色、地图视角、默认位置
 js/data.js        读取并合并气象厅的地震报告
+js/usgs.js        读取 USGS 地震目录（日本周边）
 js/map.js         Leaflet 地图、震源圆点、南海海槽轮廓、图例
 js/ui.js          右侧面板：统计、列表、按钮
 js/home.js        "我的位置"的读取和保存
@@ -50,6 +52,7 @@ Build command 留空，Build output directory 填 `/`。推送到 `main` 会自�
 ## 数据来源
 
 - 地震数据：[气象厅 防災情報 JSON](https://www.jma.go.jp/bosai/quake/data/list.json)，各地震度来自同目录下每次地震的详细报告（[地震情報](https://www.jma.go.jp/bosai/map.html#contents=earthquake_map)）
+- USGS 地震目录：[FDSN Event Web Service](https://earthquake.usgs.gov/fdsnws/event/1/)，日本周边大约 M4 以上较完整
 - 底图：[国土地理院 淡色地図](https://maps.gsi.go.jp/development/ichiran.html)
 - 地图库：[Leaflet](https://leafletjs.com/) 1.9.4
 

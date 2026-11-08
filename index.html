@@ -15,9 +15,9 @@
 <div class="app">
   <header>
     <h1 data-i18n="title">震源速览</h1>
-    <div class="sub" data-i18n="subtitle">气象厅有感地震 · 最近约30天 · 颜色为各地观测到的最大震度</div>
+    <div class="sub" id="subtitle">气象厅有感地震 · 最近约30天 · 颜色为各地观测到的最大震度</div>
     <div class="status">
-      <span class="dot" id="dot"></span><span id="status" data-i18n="loading">正在读取气象厅数据…</span>
+      <span class="dot" id="dot"></span><span id="status">…</span>
       <button id="refresh" type="button" data-i18n="refresh">刷新</button>
       <div class="seg lang" id="lang" role="group" aria-label="Language / 语言 / 言語">
         <button type="button" data-v="zh" lang="zh-CN" aria-pressed="false">中文</button>
@@ -30,18 +30,31 @@
     <div id="map" role="region" data-i18n-aria="mapAria" aria-label="地震分布地图"></div>
     <aside>
       <div class="controls">
+        <div class="row"><span class="lbl" data-i18n="source">数据源</span>
+          <div class="seg" id="source">
+            <button type="button" data-v="jma" aria-pressed="true" data-i18n="srcJma">气象厅</button>
+            <button type="button" data-v="usgs" aria-pressed="false" data-i18n="srcUsgs">USGS</button>
+          </div></div>
         <div class="row"><span class="lbl" data-i18n="period">时间范围</span>
           <div class="seg" id="period">
             <button type="button" data-v="24" aria-pressed="false" data-i18n="p24">24小时</button>
             <button type="button" data-v="168" aria-pressed="true" data-i18n="p168">7天</button>
             <button type="button" data-v="all" aria-pressed="false" data-i18n="pAll">全部</button>
+            <button type="button" data-v="year" aria-pressed="false" data-i18n="pYear" hidden>1年</button>
           </div></div>
-        <div class="row"><span class="lbl" data-i18n="minInt">最大震度</span>
+        <div class="row" id="row-minint"><span class="lbl" data-i18n="minInt">最大震度</span>
           <div class="seg" id="minint">
             <button type="button" data-v="0" aria-pressed="true" data-i18n="all">全部</button>
             <button type="button" data-v="2" aria-pressed="false" data-i18n="min3">3以上</button>
             <button type="button" data-v="3" aria-pressed="false" data-i18n="min4">4以上</button>
             <button type="button" data-v="4" aria-pressed="false" data-i18n="min5">5弱以上</button>
+          </div></div>
+        <div class="row" id="row-minmag" hidden><span class="lbl" data-i18n="minMag">最小震级</span>
+          <div class="seg" id="minmag">
+            <button type="button" data-v="2.5" aria-pressed="true">M2.5+</button>
+            <button type="button" data-v="4" aria-pressed="false">M4+</button>
+            <button type="button" data-v="5" aria-pressed="false">M5+</button>
+            <button type="button" data-v="6" aria-pressed="false">M6+</button>
           </div></div>
         <div class="row"><span class="lbl" data-i18n="view">地图视角</span>
           <div class="seg" id="view">
@@ -65,12 +78,12 @@
           <div class="stat"><b id="s-mag">–</b><span id="s-mag-lbl"></span></div>
           <div class="stat"><b id="s-near">–</b><span id="s-near-lbl"></span></div>
         </div>
-        <ul id="list" data-i18n-aria="listAria" aria-label="地震列表"><li class="empty" data-i18n="loading">正在读取…</li></ul>
+        <ul id="list" data-i18n-aria="listAria" aria-label="地震列表"><li class="empty" data-i18n="loadingList">正在读取…</li></ul>
       </div>
       <section id="detail" class="detail" hidden aria-live="polite">
         <div class="detail-bar">
           <button type="button" id="back" data-i18n="back">← 返回列表</button>
-          <span class="lbl" data-i18n="detailHint">地图上的圆点是各观测点，红叉是震央</span>
+          <span class="lbl" id="detail-hint">地图上的圆点是各观测点，红叉是震央</span>
         </div>
         <div id="detail-body"></div>
       </section>

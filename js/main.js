@@ -1,49 +1,73 @@
 // Entry point: holds page state and wires data, map and panel together.
-import { REFRESH_MS } from "./config.js";
+import { REFRESH_MS, USGS_YEAR_REFRESH_MS } from "./config.js";
 import { fetchDetail, fetchEvents } from "./data.js";
 import { applyStatic, fmtClock, onLangChange, setLang, t } from "./i18n.js";
 import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
   drawHome, drawQuakes, drawStations, enterDetail, exitDetail, flyToView,
-  initMap, onMapClick, refreshMapLanguage, setNankaiVisible, setPickCursor,
+  initMap, onMapClick, refreshMapLanguage, setLegendSource, setNankaiVisible, setPickCursor,
 } from "./map.js";
 import {
-  bindSegment, renderDetail, renderList, renderStats, setHomeLabel, setHomeNote, setPickButton,
-  setStatus, showDetailView, tooltipHtml,
+  applySourceUi, bindSegment, pressSegment, renderDetail, renderList, renderStats, setHomeLabel,
+  setHomeNote, setPickButton, setStatus, showDetailView, tooltipHtml,
 } from "./ui.js";
+import { USGS_DAYS, fetchUsgs } from "./usgs.js";
 import { $, km, rank } from "./util.js";
 
-const state = {
+/** Per-source feed state. JMA is one fixed list; USGS is re-queried when its filters change. */
+const feed = () => ({
   events: [],
-  seen: null,          // event ids from the previous load; null before the first
+  query: "",           // what the current events were fetched for (USGS)
+  seen: null,          // event ids from the previous load of the same query; null before the first
   fresh: new Set(),    // ids that appeared after the page opened
   sig: "",
-  periodHours: "168",  // "24" | "168" | "all"
-  minRank: 0,
-  home: loadHome(),     // null until the viewer sets a location
+  updatedAt: null,     // time of the last successful load
+  failed: false,
+  loading: false,
+});
+
+const state = {
+  source: "jma",       // "jma" | "usgs"
+  feeds: { jma: feed(), usgs: feed() },
+  periodHours: "168",  // "24" | "168" | "all" | "year" (USGS only)
+  minRank: 0,          // JMA: minimum intensity rank
+  minMag: 2.5,         // USGS: minimum magnitude
+  home: loadHome(),    // null until the viewer sets a location
   picking: false,
   selected: null,      // eid of the earthquake shown in the detail panel
-  updatedAt: null,     // time of the last successful load
-  loadFailed: false,
 };
 
+const cur = () => state.feeds[state.source];
+const sourceName = () => t(state.source === "usgs" ? "usgsName" : "jmaName");
+
 function visibleEvents() {
+  const { events } = cur();
+  if (state.source === "usgs") {
+    // The USGS query already covers the period; filter only in case of a stale wider result.
+    const cut = Date.now() - USGS_DAYS[state.periodHours] * 86400e3;
+    return events.filter((e) => e.time >= cut && (+e.mag || 0) >= state.minMag);
+  }
   const cut = state.periodHours === "all" ? 0 : Date.now() - +state.periodHours * 3600e3;
-  return state.events.filter((e) => e.time >= cut && rank(e.maxi) >= state.minRank);
+  return events.filter((e) => e.time >= cut && rank(e.maxi) >= state.minRank);
 }
 
 function render() {
-  for (const e of state.events) e.dist = state.home ? km(state.home, e.loc) : null;
+  const f = cur();
+  for (const e of f.events) e.dist = state.home ? km(state.home, e.loc) : null;
   const list = visibleEvents();
   drawQuakes(list, { tooltipFor: tooltipHtml, onSelect: openDetail });
   renderStats(list, state);
-  renderList(list, { home: state.home, fresh: state.fresh, hasAny: state.events.length > 0, onSelect: openDetail });
+  renderList(list, { home: state.home, fresh: f.fresh, hasAny: f.events.length > 0, onSelect: openDetail });
 }
 
 async function openDetail(e) {
   state.selected = e.eid;
   showDetailView(true);
   enterDetail(e);
+  if (e.source === "usgs") {
+    renderDetail(e, { home: state.home });
+    return;
+  }
   if (!e.detail) {
     renderDetail(e, { home: state.home, messageKey: "noDetail" });
     return;
@@ -59,10 +83,11 @@ async function openDetail(e) {
   }
 }
 
-/** Redraw an open detail panel from the cached report (after a location or language change). */
+/** Redraw an open detail panel (after a location or language change); JMA reports are cached. */
 function refreshDetail() {
-  const sel = state.events.find((e) => e.eid === state.selected);
-  if (!sel || !sel.detail) return;
+  const sel = cur().events.find((e) => e.eid === state.selected);
+  if (!sel) return;
+  if (sel.source === "usgs" || !sel.detail) { renderDetail(sel, { home: state.home }); return; }
   fetchDetail(sel.detail).then(
     (detail) => {
       if (state.selected !== sel.eid) return;
@@ -73,17 +98,19 @@ function refreshDetail() {
   );
 }
 
-function showStatus() {
-  if (state.loadFailed) { setStatus(t("loadFailed"), false); return; }
-  if (!state.updatedAt) { setStatus(t("loading"), true); return; }
-  const freshNote = state.fresh.size ? t("fresh", { n: state.fresh.size }) : "";
-  setStatus(freshNote + t("updated", { t: fmtClock(state.updatedAt) }), true);
-}
-
 function closeDetail() {
+  if (!state.selected) return;
   state.selected = null;
   exitDetail();
   showDetailView(false);
+}
+
+function showStatus() {
+  const f = cur();
+  if (f.failed) { setStatus(t("loadFailed", { src: sourceName() }), false); return; }
+  if (!f.updatedAt || f.loading && !f.events.length) { setStatus(t("loading", { src: sourceName() }), true); return; }
+  const freshNote = f.fresh.size ? t("fresh", { n: f.fresh.size }) : "";
+  setStatus(freshNote + t("updated", { t: fmtClock(f.updatedAt) }), true);
 }
 
 function setHome(home) {
@@ -100,44 +127,91 @@ function setPicking(on) {
   setPickCursor(on);
 }
 
+const usgsQuery = () => ({ days: USGS_DAYS[state.periodHours], minMag: state.minMag });
+
+/** Load the active source. `quiet` keeps the current list on screen while refreshing. */
 async function load() {
+  const source = state.source, f = state.feeds[source];
+  let query = "", fetcher = fetchEvents;
+  if (source === "usgs") {
+    const q = usgsQuery();
+    query = `${q.days}|${q.minMag}`;
+    fetcher = () => fetchUsgs(q);
+  }
+  if (query !== f.query) { f.seen = null; f.fresh.clear(); f.sig = ""; }
+  f.loading = true;
+  showStatus();
   try {
-    const next = await fetchEvents();
-    if (state.seen) for (const e of next) if (!state.seen.has(e.eid)) state.fresh.add(e.eid);
-    state.seen = new Set(next.map((e) => e.eid));
-    // Re-render only when something changed, so hovering and reading aren't interrupted every minute.
+    const next = await fetcher();
+    if (state.source !== source) return; // switched away while loading
+    if (source === "usgs" && query !== `${usgsQuery().days}|${usgsQuery().minMag}`) return; // filters changed
+    if (f.seen) for (const e of next) if (!f.seen.has(e.eid)) f.fresh.add(e.eid);
+    f.seen = new Set(next.map((e) => e.eid));
+    f.query = query;
+    // Re-render only when something changed, so hovering and reading aren't interrupted.
     const sig = next.map((e) => e.eid + e.maxi + e.mag).join("|");
-    const changed = sig !== state.sig;
-    state.sig = sig;
-    state.events = next;
-    state.updatedAt = new Date();
-    state.loadFailed = false;
+    const changed = sig !== f.sig;
+    f.sig = sig;
+    f.events = next;
+    f.updatedAt = new Date();
+    f.failed = false;
+    f.loading = false;
     showStatus();
     if (changed) render();
   } catch (err) {
-    state.loadFailed = true;
-    showStatus();
-    if (!state.events.length) render();
+    f.loading = false;
+    f.failed = true;
+    if (state.source === source) {
+      showStatus();
+      if (!f.events.length) render();
+    }
   }
+}
+
+function setSource(source) {
+  if (source === state.source) return;
+  closeDetail();
+  state.source = source;
+  // "1 year" exists only for USGS; fall back to the JMA list's full range.
+  if (source === "jma" && state.periodHours === "year") {
+    state.periodHours = "all";
+    pressSegment("period", "all");
+  }
+  applySourceUi(source);
+  setLegendSource(source);
+  showStatus();
+  render();
+  load();
 }
 
 // ---- wiring ----
 applyStatic();
+applySourceUi(state.source);
 initMap($("map"));
 drawHome(state.home);
 setHomeLabel(state.home);
 setPickButton(false);
 renderStats([], state);
 
-bindSegment("period", (v) => { state.periodHours = v; render(); });
+bindSegment("source", setSource);
+bindSegment("period", (v) => {
+  state.periodHours = v;
+  render();
+  if (state.source === "usgs") load();
+});
 bindSegment("minint", (v) => { state.minRank = +v; render(); });
+bindSegment("minmag", (v) => {
+  state.minMag = +v;
+  render();
+  load();
+});
 $("view").addEventListener("click", (ev) => {
   const b = ev.target.closest("button");
   if (b) flyToView(b.dataset.v, state.home);
 });
 $("nankai").addEventListener("change", (ev) => setNankaiVisible(ev.target.checked));
 $("back").addEventListener("click", closeDetail);
-document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && state.selected) closeDetail(); });
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeDetail(); });
 
 $("pick-home").addEventListener("click", () => setPicking(!state.picking));
 $("reset-home").addEventListener("click", () => { setPicking(false); saveHome(null); setHome(null); });
@@ -167,6 +241,7 @@ $("lang").addEventListener("click", (ev) => {
   if (b) setLang(b.dataset.v);
 });
 onLangChange(() => {
+  applySourceUi(state.source);
   setHomeLabel(state.home);
   setPickButton(state.picking);
   drawHome(state.home);
@@ -178,6 +253,12 @@ onLangChange(() => {
 
 $("refresh").addEventListener("click", load);
 load();
-setInterval(load, REFRESH_MS);
+
+// The JMA list and short USGS windows refresh every minute; a year of USGS data every 10 minutes.
+let lastAuto = 0;
+setInterval(() => {
+  const every = state.source === "usgs" && state.periodHours === "year" ? USGS_YEAR_REFRESH_MS : REFRESH_MS;
+  if (Date.now() - lastAuto >= every - 1000) { lastAuto = Date.now(); load(); }
+}, REFRESH_MS);
 // Refresh the "x minutes ago" labels even when no new data arrives.
-setInterval(() => { if (state.events.length) render(); }, 5 * 60_000);
+setInterval(() => { if (cur().events.length) render(); }, 5 * 60_000);

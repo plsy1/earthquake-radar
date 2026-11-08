@@ -26,7 +26,7 @@ export function toEvents(reports) {
     if (!r || !r.eid || (r.ttl || "").includes("遠地")) continue;
     let g = byId.get(r.eid);
     if (!g) {
-      g = { eid: r.eid, time: eidDate(r.eid), maxi: "", mag: "", anm: "", anmEn: "", loc: null, dist: 0, detail: "" };
+      g = { source: "jma", eid: r.eid, time: eidDate(r.eid), maxi: "", mag: "", anm: "", anmEn: "", loc: null, dist: 0, detail: "" };
       byId.set(r.eid, g);
     }
     if (rank(r.maxi) > rank(g.maxi)) g.maxi = r.maxi;

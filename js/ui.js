@@ -1,5 +1,5 @@
 // Side panel: status line, controls, summary numbers, earthquake list, detail.
-import { COLOR, DARKTEXT, NEAR_KM, NEARBY_STATION_KM, ORDER, UNKNOWN_COLOR } from "./config.js";
+import { COLOR, DARKTEXT, NEAR_KM, NEARBY_STATION_KM, ORDER, UNKNOWN_COLOR, depthBand } from "./config.js";
 import { ago, depthText, fmtTime, intLabel, magText, pick, placeName, t } from "./i18n.js";
 import { $, esc, km, rank } from "./util.js";
 
@@ -38,7 +38,28 @@ export function bindSegment(id, onChange) {
   });
 }
 
+/** Show the controls and wording that fit the chosen data source. */
+export function applySourceUi(source) {
+  const usgs = source === "usgs";
+  $("subtitle").textContent = t(usgs ? "subtitleUsgs" : "subtitle");
+  $("row-minint").hidden = usgs;
+  $("row-minmag").hidden = !usgs;
+  document.querySelector('#period button[data-v="year"]').hidden = !usgs;
+  $("detail-hint").textContent = t(usgs ? "detailHintUsgs" : "detailHint");
+}
+
+/** Press the button in a segment group whose value is `v`. */
+export function pressSegment(id, v) {
+  for (const b of $(id).querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.v === v));
+}
+
 export function tooltipHtml(e) {
+  if (e.source === "usgs") {
+    return t("tooltipUsgs", {
+      place: esc(placeName(e)), mag: magText(e.mag), depth: depthText(e.loc.depth),
+      time: fmtTime(e.time), ago: ago(e.time),
+    });
+  }
   return t("tooltip", {
     place: esc(placeName(e)), mag: magText(e.mag), int: intLabel(e.maxi),
     time: fmtTime(e.time), ago: ago(e.time),
@@ -50,6 +71,16 @@ export function showDetailView(on) {
   $("overview").hidden = on;
   $("detail").hidden = !on;
   if (on) $("detail").scrollTop = 0;
+}
+
+/** Chip for a list row or detail header: intensity for JMA, magnitude on a depth color for USGS. */
+function quakeChip(e, cls = "chip") {
+  if (e.source !== "usgs") return chipEl(e.maxi, cls);
+  const band = depthBand(e.loc.depth);
+  const c = el("div", cls, e.mag === "" ? "–" : (+e.mag).toFixed(1));
+  c.style.background = band.color;
+  c.style.color = band.dark ? "#1a1a1a" : "#fff";
+  return c;
 }
 
 function chipEl(maxi, cls = "chip") {
@@ -77,17 +108,19 @@ export function renderDetail(e, { home, detail, messageKey }) {
   body.textContent = "";
 
   const top = el("div", "detail-top");
-  top.appendChild(chipEl(e.maxi, "chip big"));
+  top.appendChild(quakeChip(e, "chip big"));
   const head = el("div");
   head.style.minWidth = "0";
   head.append(
     el("h2", null, placeName(e)),
     el("div", "facts", t("whenAgo", { time: fmtTime(e.time), ago: ago(e.time) })),
-    el("div", "facts", `${magText(e.mag)} · ${depthText(e.loc.depth)} · ${t("coords", { lat: e.loc.lat, lon: e.loc.lon })}`),
+    el("div", "facts", `${magText(e.mag)} · ${depthText(e.loc.depth)} · ${t("coords", { lat: +e.loc.lat.toFixed(2), lon: +e.loc.lon.toFixed(2) })}`),
   );
   if (home) head.appendChild(el("div", "facts", t("distFromMe", { d: Math.round(e.dist) })));
   top.appendChild(head);
   body.appendChild(top);
+
+  if (e.source === "usgs") { renderUsgsNotes(body, e); return; }
 
   if (!detail) {
     body.appendChild(el("div", "empty", t(messageKey || "loadingDetail")));
@@ -155,25 +188,58 @@ export function renderDetail(e, { home, detail, messageKey }) {
   }
 }
 
-const SCOPE_KEY = { "24": "scope24", "168": "scope168", all: "scopeAll" };
+/** What USGS says about one event, plus a link to its event page. */
+function renderUsgsNotes(body, e) {
+  const facts = el("div", "note");
+  const lines = [];
+  if (e.magType) lines.push(t("usgsMagType", { t: e.magType }));
+  lines.push(t(e.status === "reviewed" ? "usgsReviewed" : "usgsAutomatic"));
+  if (e.felt) lines.push(t("usgsFelt", { n: e.felt }));
+  if (e.alert) lines.push(t("usgsAlert", { level: e.alert }));
+  facts.textContent = lines.join("\n");
+  body.appendChild(facts);
+  if (e.tsunami) body.appendChild(el("div", "note mine", t("usgsTsunami")));
+  if (e.url) {
+    const p = el("div", "note");
+    const a = el("a", null, t("usgsLink") + " ↗");
+    a.href = e.url;
+    a.target = "_blank";
+    a.rel = "noopener";
+    p.appendChild(a);
+    body.appendChild(p);
+  }
+  body.appendChild(el("div", "note lbl", t("usgsNote")));
+}
+
+const SCOPE_KEY = { "24": "scope24", "168": "scope168", all: "scopeAll", year: "scopeYear" };
 
 /**
  * Four summary tiles for the earthquakes currently shown. Labels say which
  * time range and intensity filter the numbers cover.
  */
-export function renderStats(list, { home, periodHours, minRank }) {
+export function renderStats(list, { home, periodHours, minRank, minMag, source }) {
   const top = list.reduce((a, b) => (!a || rank(b.maxi) > rank(a.maxi) ? b : a), null);
   const big = list.reduce((a, b) => (!a || (+b.mag || 0) > (+a.mag || 0) ? b : a), null);
   const scope = t(SCOPE_KEY[periodHours]);
 
   $("s-count").textContent = list.length;
-  $("s-count-lbl").textContent = minRank > 0
-    ? t("countMin", { scope, v: intLabel(ORDER[minRank]) })
-    : t("countFelt", { scope });
-  $("s-maxi").textContent = top ? t("int", { v: intLabel(top.maxi) }) : "–";
-  $("s-maxi-lbl").textContent = top ? `${t("strongest")} · ${placeName(top)}` : t("strongest");
-  $("s-mag").textContent = big && !isNaN(+big.mag) ? magText(big.mag) : "–";
-  $("s-mag-lbl").textContent = big ? `${t("largest")} · ${placeName(big)}` : t("largest");
+  if (source === "usgs") {
+    // USGS has no intensities: tiles show largest magnitude and deepest hypocenter.
+    const deep = list.reduce((a, b) => (!a || (b.loc.depth ?? 0) > (a.loc.depth ?? 0) ? b : a), null);
+    $("s-count-lbl").textContent = t("countMag", { scope, m: minMag });
+    $("s-maxi").textContent = big && !isNaN(+big.mag) ? magText(big.mag) : "–";
+    $("s-maxi-lbl").textContent = big ? `${t("largest")} · ${placeName(big)}` : t("largest");
+    $("s-mag").textContent = deep ? `${Math.round(deep.loc.depth ?? 0)} km` : "–";
+    $("s-mag-lbl").textContent = deep ? `${t("deepest")} · ${placeName(deep)}` : t("deepest");
+  } else {
+    $("s-count-lbl").textContent = minRank > 0
+      ? t("countMin", { scope, v: intLabel(ORDER[minRank]) })
+      : t("countFelt", { scope });
+    $("s-maxi").textContent = top ? t("int", { v: intLabel(top.maxi) }) : "–";
+    $("s-maxi-lbl").textContent = top ? `${t("strongest")} · ${placeName(top)}` : t("strongest");
+    $("s-mag").textContent = big && !isNaN(+big.mag) ? magText(big.mag) : "–";
+    $("s-mag-lbl").textContent = big ? `${t("largest")} · ${placeName(big)}` : t("largest");
+  }
   if (home) {
     $("s-near").textContent = list.filter((e) => e.dist != null && e.dist <= NEAR_KM).length;
     $("s-near-lbl").textContent = t("nearCount", { km: NEAR_KM });
@@ -198,8 +264,8 @@ function listItem(e, home, isFresh, onSelect) {
   const li = el("li", isFresh ? "fresh" : null);
   li.tabIndex = 0;
 
-  const chip = chipEl(e.maxi);
-  chip.title = t("chipTitle");
+  const chip = quakeChip(e);
+  chip.title = e.source === "usgs" ? depthText(e.loc.depth) : t("chipTitle");
 
   const mid = el("div");
   mid.style.minWidth = "0";

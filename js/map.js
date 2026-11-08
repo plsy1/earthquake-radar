@@ -1,5 +1,5 @@
 // Leaflet map: base tiles, Nankai outline, home marker, earthquake circles.
-import { COLOR, DARKTEXT, NEAR_KM, ORDER, TILE_ATTRIBUTION_URL, TILE_URL, UNKNOWN_COLOR, VIEWS } from "./config.js";
+import { COLOR, DARKTEXT, DEPTH_BANDS, NEAR_KM, ORDER, TILE_ATTRIBUTION_URL, TILE_URL, UNKNOWN_COLOR, VIEWS, depthBand } from "./config.js";
 import { intLabel, pick, placeName, t } from "./i18n.js";
 import { NANKAI } from "./nankai.js";
 import { esc, rank } from "./util.js";
@@ -7,11 +7,17 @@ import { esc, rank } from "./util.js";
 const L = window.L;
 let map, nankaiLayer, homeLayer, quakeLayer, detailLayer;
 let userMoved = false; // once true, resizes no longer refit the whole country
-let legendEl, attribution = "";
+let legendEl, legendSource = "jma", attribution = "";
 
 const attributionHtml = () => `<a href="${TILE_ATTRIBUTION_URL}" target="_blank" rel="noopener">${t("attribution")}</a>`;
-const legendHtml = () => esc(t("legend")) + '<div class="scale">' + ORDER.map((k) =>
-  `<i style="background:${COLOR[k]};color:${DARKTEXT.has(k) ? "#1a1a1a" : "#fff"}">${intLabel(k)}</i>`).join("") + "</div>";
+const swatch = (bg, dark, text, wide) =>
+  `<i style="background:${bg};color:${dark ? "#1a1a1a" : "#fff"}${wide ? ";width:auto;padding:0 6px" : ""}">${text}</i>`;
+const legendHtml = () => legendSource === "usgs"
+  ? esc(t("legendDepth")) + '<div class="scale">' + DEPTH_BANDS.map((b) => swatch(b.color, b.dark, b.label, true)).join("") + "</div>"
+  : esc(t("legend")) + '<div class="scale">' + ORDER.map((k) => swatch(COLOR[k], DARKTEXT.has(k), intLabel(k))).join("") + "</div>";
+
+/** Circle color: JMA events by max intensity, USGS events by depth. */
+export const quakeColor = (e) => (e.source === "usgs" ? depthBand(e.loc.depth).color : COLOR[e.maxi] || UNKNOWN_COLOR);
 
 export function initMap(el) {
   map = L.map(el, { zoomControl: true, preferCanvas: true }).fitBounds(VIEWS.jp.bounds);
@@ -45,6 +51,12 @@ export function initMap(el) {
   legend.addTo(map);
 }
 
+/** Show the intensity scale (JMA) or the depth scale (USGS). */
+export function setLegendSource(source) {
+  legendSource = source;
+  if (legendEl) legendEl.innerHTML = legendHtml();
+}
+
 /** Re-label the legend and attribution after a language change. */
 export function refreshMapLanguage() {
   if (legendEl) legendEl.innerHTML = legendHtml();
@@ -75,13 +87,13 @@ export function drawHome(home) {
 /** Draw one circle per earthquake; `list` is newest first. Clicking a circle selects it. */
 export function drawQuakes(list, { tooltipFor, onSelect }) {
   quakeLayer.clearLayers();
-  // Strongest and newest on top.
-  const drawOrder = [...list].sort((a, b) => rank(a.maxi) - rank(b.maxi) || a.time - b.time);
+  // Strongest (or largest) and newest on top.
+  const drawOrder = [...list].sort((a, b) => rank(a.maxi) - rank(b.maxi) || (+a.mag || 0) - (+b.mag || 0) || a.time - b.time);
   for (const e of drawOrder) {
     const m = +e.mag;
     const radius = isNaN(m) ? 5 : Math.max(4, 3 + m * 2.4);
     const c = L.circleMarker([e.loc.lat, e.loc.lon], {
-      radius, color: "#222", weight: 0.8, fillColor: COLOR[e.maxi] || UNKNOWN_COLOR, fillOpacity: 0.88,
+      radius, color: "#222", weight: 0.8, fillColor: quakeColor(e), fillOpacity: 0.88,
     }).bindTooltip(() => tooltipFor(e), { direction: "top", offset: [0, -radius] })
       .on("click", () => onSelect(e));
     c.addTo(quakeLayer);
