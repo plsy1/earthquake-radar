@@ -190,6 +190,14 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .profile-end{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#2c6fbb;color:#fff;font:700 11px/1 var(--f-body);box-shadow:0 0 0 2px #fff}
 .profile-ctl button{display:block;background:var(--panel);color:var(--ink);border:0;padding:5px 8px;font:600 12px var(--f-body);cursor:pointer}
 .profile-ctl button:hover{background:var(--hover)}
+.replay-ctl{background:var(--panel);color:var(--ink);max-width:270px}
+.replay-ctl button{display:block;width:100%;text-align:left;background:var(--panel);color:var(--ink);border:0;border-radius:4px;padding:6px 10px;font:600 12px var(--f-body);cursor:pointer}
+.replay-ctl button:hover{background:var(--hover)}
+.replay-info,.replay-note{padding:0 10px 7px;font:12px/1.5 var(--f-body)}
+.replay-info{font-variant-numeric:tabular-nums}
+.replay-note{color:var(--muted)}
+.replay-ctl .wave{display:inline-block;width:16px;height:0;margin-right:4px;vertical-align:middle;border-top:2px dashed #2c6fbb}
+.replay-ctl .wave.s{border-top:3px solid #e8590c;margin-left:6px}
 
 /* ---- long-period ground motion ---- */
 .place-row{display:flex;align-items:center;gap:6px;min-width:0}

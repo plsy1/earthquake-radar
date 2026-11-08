@@ -7,7 +7,7 @@ import {
 import { initBasemap } from "./basemap.js";
 import { getLang, intLabel, pick, placeName, t } from "./i18n.js";
 import { NANKAI, NANKAI_SEGMENTS, clipLon } from "./nankai.js";
-import { esc, rank } from "./util.js";
+import { esc, km, rank } from "./util.js";
 
 const L = window.L;
 
@@ -121,6 +121,23 @@ export function initMap(el, { basemap, features }) {
     return wrap;
   };
   pc.addTo(map);
+
+  // Replay of how the shaking spread; shown only while a detail view has station readings.
+  const rc = L.control({ position: "topright" });
+  rc.onAdd = () => {
+    replayCtl = L.DomUtil.create("div", "leaflet-bar replay-ctl");
+    replayCtl.hidden = true;
+    replayBtn = L.DomUtil.create("button", "", replayCtl);
+    replayBtn.type = "button";
+    replayInfo = L.DomUtil.create("div", "replay-info", replayCtl);
+    replayNote = L.DomUtil.create("div", "replay-note", replayCtl);
+    L.DomEvent.disableClickPropagation(replayCtl);
+    L.DomEvent.disableScrollPropagation(replayCtl);
+    L.DomEvent.on(replayBtn, "click", () => (replay ? stopReplay(true) : startReplay()));
+    paintReplay();
+    return replayCtl;
+  };
+  rc.addTo(map);
   return basemapReady;
 }
 
@@ -281,6 +298,7 @@ export async function setPlatesVisible(on) {
 export function refreshMapLanguage() {
   if (profileBtn) profileBtn.textContent = t("profileBtn");
   if (legendEl) legendEl.innerHTML = legendHtml();
+  paintReplay();
   if (platesLabels) {
     map.removeLayer(platesLabels);
     platesLabels = buildPlateLabels();
@@ -341,6 +359,10 @@ export function drawQuakes(list, { tooltipFor, onSelect }) {
 /** Hide the other earthquakes and mark the selected epicenter. */
 export function enterDetail(e) {
   userMoved = true;
+  stopReplay();
+  detailStations = null;
+  replayDone = null;
+  showReplay(false);
   map.removeLayer(quakeLayer);
   detailLayer.clearLayers();
   detailLayer.addTo(map);
@@ -352,18 +374,27 @@ export function enterDetail(e) {
   if (hasSize()) map.flyTo([e.loc.lat, e.loc.lon], Math.max(map.getZoom(), 7), { duration: 0.8 });
 }
 
-/** Plot station readings, weakest first so strong ones sit on top, and frame the shaking. */
-export function drawStations(e, stations) {
+function stationMarker(s) {
+  return L.circleMarker([s.lat, s.lon], {
+    radius: 3.5 + rank(s.int) * 0.7, color: "#333", weight: 0.6, fillColor: COLOR[s.int] || UNKNOWN_COLOR, fillOpacity: 0.95,
+  }).bindTooltip(t("station", { name: esc(pick(s.name, s.nameEn)), int: intLabel(s.int) }), { direction: "top" });
+}
+
+/** All station readings, weakest first so strong ones sit on top, plus the epicenter. */
+function paintStations() {
+  const { e, stations } = detailStations;
   detailLayer.clearLayers();
-  const sorted = [...stations].sort((a, b) => rank(a.int) - rank(b.int));
-  for (const s of sorted) {
-    const r = rank(s.int);
-    L.circleMarker([s.lat, s.lon], {
-      radius: 3.5 + r * 0.7, color: "#333", weight: 0.6, fillColor: COLOR[s.int] || UNKNOWN_COLOR, fillOpacity: 0.95,
-    }).bindTooltip(t("station", { name: esc(pick(s.name, s.nameEn)), int: intLabel(s.int) }), { direction: "top" })
-      .addTo(detailLayer);
-  }
+  for (const s of [...stations].sort((a, b) => rank(a.int) - rank(b.int))) stationMarker(s).addTo(detailLayer);
   addEpicenter(e);
+}
+
+/** Plot station readings and frame the shaking. */
+export function drawStations(e, stations) {
+  stopReplay();
+  detailStations = { e, stations };
+  replayDone = null;
+  paintStations();
+  showReplay(stations.length > 0);
 
   // Frame stations of intensity 3 and up when there are enough; otherwise all of them.
   const strong = stations.filter((s) => rank(s.int) >= 2);
@@ -373,6 +404,9 @@ export function drawStations(e, stations) {
 }
 
 export function exitDetail() {
+  stopReplay();
+  detailStations = null;
+  showReplay(false);
   map.removeLayer(detailLayer);
   detailLayer.clearLayers();
   map.removeLayer(afterLayer);
@@ -380,6 +414,93 @@ export function exitDetail() {
   map.removeLayer(lpLayer);
   lpLayer.clearLayers();
   quakeLayer.addTo(map);
+}
+
+// ---- replay: how the shaking spread from the hypocenter ----
+// JMA reports each station's peak intensity but not when the shaking arrived, so arrival
+// times are estimated from the distance to the hypocenter at typical wave speeds. The
+// S wave carries the strong shaking, so a station lights up when it gets there.
+
+const VP = 7, VS = 4;                  // km/s: the usual rule of thumb for Japan
+const REPLAY_TARGET_S = 15;            // play faster than real time to fit about this long
+const REPLAY_SPEEDS = [1, 2, 3, 5, 8, 10, 15, 20, 30, 45, 60];
+let detailStations = null;             // { e, stations } of the open detail view
+let replay = null;                     // the running replay
+let replayDone = null;                 // { end, total } after a replay finishes
+let replayCtl = null, replayBtn = null, replayInfo = null, replayNote = null;
+
+function showReplay(on) {
+  if (replayCtl) replayCtl.hidden = !on;
+  paintReplay();
+}
+
+function paintReplay() {
+  if (!replayBtn) return;
+  replayBtn.textContent = t(replay ? "replayStop" : replayDone ? "replayAgain" : "replayBtn");
+  replayBtn.setAttribute("aria-pressed", String(!!replay));
+  const info = replay
+    ? t("replayInfo", { s: Math.floor(replay.now), x: replay.speed, n: replay.next, total: replay.queue.length })
+    : replayDone ? t("replayDone", { s: Math.round(replayDone.end), total: replayDone.total }) : "";
+  replayInfo.textContent = info;
+  replayInfo.hidden = !info;
+  replayNote.hidden = !info;
+  replayNote.innerHTML = info
+    ? `<span class="wave p"></span>${esc(t("waveP"))} <span class="wave s"></span>${esc(t("waveS"))}<br>${esc(t("replayNote"))}`
+    : "";
+}
+
+function startReplay() {
+  if (!detailStations || !detailStations.stations.length) return;
+  const { e, stations } = detailStations;
+  const depth = e.loc.depth == null || !isFinite(+e.loc.depth) ? 10 : Math.max(0, +e.loc.depth);
+  const queue = stations
+    .map((s) => ({ s, at: Math.hypot(km(e.loc, s), depth) / VS }))
+    .sort((a, b) => a.at - b.at);
+  const end = queue[queue.length - 1].at;
+  const speed = REPLAY_SPEEDS.find((v) => end / v <= REPLAY_TARGET_S) || REPLAY_SPEEDS[REPLAY_SPEEDS.length - 1];
+  const center = [e.loc.lat, e.loc.lon];
+  detailLayer.clearLayers();
+  addEpicenter(e);
+  replayDone = null;
+  replay = {
+    queue, next: 0, end, speed, depth, now: 0, timer: 0, start: performance.now(),
+    waves: [
+      { v: VP, ring: L.circle(center, { radius: 1, interactive: false, color: "#2c6fbb", weight: 1.5, dashArray: "6 5", fill: false }) },
+      { v: VS, ring: L.circle(center, { radius: 1, interactive: false, color: "#e8590c", weight: 2.5, fillColor: "#e8590c", fillOpacity: 0.07 }) },
+    ],
+  };
+  replayFrame();
+}
+
+function replayFrame() {
+  const r = replay;
+  if (!r) return;
+  r.now = ((performance.now() - r.start) / 1000) * r.speed;
+  for (const w of r.waves) {
+    // Where the wave front meets the surface: it starts at the hypocenter, `depth` km down.
+    const reach = w.v * r.now;
+    if (reach <= r.depth) continue;
+    w.ring.setRadius(Math.sqrt(reach * reach - r.depth * r.depth) * 1000);
+    if (!detailLayer.hasLayer(w.ring)) w.ring.addTo(detailLayer);
+  }
+  while (r.next < r.queue.length && r.queue[r.next].at <= r.now) stationMarker(r.queue[r.next++].s).addTo(detailLayer);
+  if (r.now >= r.end + r.speed) { // linger a second on the last station, then settle
+    replay = null;
+    replayDone = { end: r.end, total: r.queue.length };
+    paintStations();
+  } else {
+    r.timer = setTimeout(replayFrame, 40);
+  }
+  paintReplay();
+}
+
+/** Stop a running replay; `restore` puts every station back (when the viewer stops it). */
+function stopReplay(restore = false) {
+  if (!replay) return;
+  clearTimeout(replay.timer);
+  replay = null;
+  if (restore && detailStations) paintStations();
+  paintReplay();
 }
 
 /**
