@@ -58,19 +58,22 @@ export function initMap(el, { basemap, features }) {
   map.createPane("segments").style.zIndex = 340;
   map.createPane("plates").style.zIndex = 350;
   map.createPane("historic").style.zIndex = 620;
-  // Aftershocks draw above station dots, on their own canvas.
+  // Panes above the earthquake canvas draw with SVG, never canvas: a canvas covers the
+  // whole map and would swallow every click meant for the circles under it, even when
+  // empty. An SVG root lets the pointer through (see style.css); only its shapes catch it.
+  // Aftershocks draw above station dots.
   map.createPane("aftershocks").style.zIndex = 450;
-  afterRenderer = L.canvas({ pane: "aftershocks" });
+  afterRenderer = L.svg({ pane: "aftershocks" });
   afterLayer = L.layerGroup();
   lpLayer = L.layerGroup();
-  // Tsunami coastlines sit above everything drawn on canvas so warnings stand out.
+  // Tsunami coastlines sit above the earthquake circles so warnings stand out.
   map.createPane("tsunami").style.zIndex = 470;
-  tsunamiRenderer = L.canvas({ pane: "tsunami" });
+  tsunamiRenderer = L.svg({ pane: "tsunami" });
   tsunamiLayer = L.layerGroup().addTo(map);
   // Inundation tiles sit just above the base map; shelters above the earthquake circles.
   map.createPane("inundation").style.zIndex = 320;
   map.createPane("shelters").style.zIndex = 455;
-  shelterRenderer = L.canvas({ pane: "shelters" });
+  shelterRenderer = L.svg({ pane: "shelters" });
   shelterLayer = L.layerGroup().addTo(map);
   map.on("moveend", () => { if (shelterType) loadShelters(); });
   profileLayer = L.layerGroup().addTo(map);
@@ -498,8 +501,11 @@ export function drawLongPeriod(stations, labelFor) {
   }
 }
 
-/** Aftershocks of the selected earthquake as hollow rings, inside a dashed search circle. */
-export function drawAftershocks(main, list, radiusKm, tooltipFor) {
+/**
+ * Aftershocks of the selected earthquake as hollow rings, inside a dashed search circle.
+ * Clicking a ring opens that earthquake, like the circles in the overview.
+ */
+export function drawAftershocks(main, list, radiusKm, tooltipFor, onSelect) {
   afterLayer.clearLayers();
   L.circle([main.loc.lat, main.loc.lon], {
     radius: radiusKm * 1000, renderer: afterRenderer, interactive: false,
@@ -510,7 +516,9 @@ export function drawAftershocks(main, list, radiusKm, tooltipFor) {
     L.circleMarker([e.loc.lat, e.loc.lon], {
       renderer: afterRenderer, radius: Math.max(3, 1.5 + (mag - 1) * 1.4),
       color: "#b0127a", weight: 1.4, fillColor: "#fff", fillOpacity: 0.7,
-    }).bindTooltip(tooltipFor(e), { direction: "top" }).addTo(afterLayer);
+    }).bindTooltip(tooltipFor(e), { direction: "top" })
+      .on("click", () => onSelect(e))
+      .addTo(afterLayer);
   }
 }
 

@@ -101,6 +101,10 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .leaflet-popup-content b{font-size:14px}
 .leaflet-container a.leaflet-popup-close-button{color:var(--muted)}
 .leaflet-control-attribution{font-size:10px}
+/* Layers stacked over the earthquake canvas must let clicks through: the heatmap is a
+   picture, and an SVG pane's root covers the whole map. Leaflet still gives the pointer
+   to the interactive shapes inside the SVG. */
+.leaflet-heatmap-layer,.leaflet-pane>svg{pointer-events:none}
 .pulse{width:18px;height:18px;margin:-1px 0 0 -1px;border-radius:50%;border:2px solid var(--accent);animation:pulse 1.8s ease-out infinite;box-sizing:border-box}
 @keyframes pulse{from{transform:scale(.7);opacity:1}to{transform:scale(3.2);opacity:0}}
 @media (prefers-reduced-motion:reduce){.pulse{animation:none;transform:scale(1.6)}}

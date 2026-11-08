@@ -83,7 +83,7 @@ function render() {
 /** Aftershocks of `e` among everything loaded for this source, drawn on the map too. */
 function aftershocksFor(e) {
   const info = findAftershocks(e, cur().events);
-  drawAftershocks(e, info.list, info.radiusKm, tooltipHtml);
+  drawAftershocks(e, info.list, info.radiusKm, tooltipHtml, openDetail);
   return info;
 }
 
