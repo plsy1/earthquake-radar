@@ -19,6 +19,8 @@ const JMA_LINK = '<a href="https://www.jma.go.jp/bosai/map.html#contents=earthqu
 const STRINGS = {
   zh: {
     title: "震源速览",
+    features: "地图要素", ftLabels: "地名", ftRivers: "河川・湖泊", ftRoads: "道路", ftRail: "铁路", ftBoundaries: "行政界", ftBuildings: "建筑物", ftTerrain: "等高线",
+    featuresUnavailable: "这个浏览器无法显示矢量地图，已改用普通地图，地图要素不能单独开关。",
     basemap: "底图", bmPale: "淡色", bmStd: "标准", bmPhoto: "航拍", bmRelief: "地形",
     layerSegments: "南海海槽分区", layerHistoric: "历史大地震", layerHeat: "密度热力图",
     mapSettings: "地图设置", nankaiLbl: "南海海槽", nkOff: "关闭", nkArea: "震源区", nkSegments: "历史分区", layersOn: "{n} 个图层", layerOne: "1 个图层", layersNone: "无图层",
@@ -106,6 +108,8 @@ const STRINGS = {
   },
   ja: {
     title: "地震レーダー",
+    features: "地図の表示", ftLabels: "地名", ftRivers: "河川・湖沼", ftRoads: "道路", ftRail: "鉄道", ftBoundaries: "行政界", ftBuildings: "建物", ftTerrain: "等高線",
+    featuresUnavailable: "このブラウザではベクトル地図を表示できないため、通常の地図に切り替えました。表示の切り替えは使えません。",
     basemap: "背景地図", bmPale: "淡色", bmStd: "標準", bmPhoto: "写真", bmRelief: "地形",
     layerSegments: "南海トラフ区分", layerHistoric: "過去の大地震", layerHeat: "地震の密度",
     mapSettings: "地図の設定", nankaiLbl: "南海トラフ", nkOff: "非表示", nkArea: "想定震源域", nkSegments: "区分", layersOn: "レイヤー {n}", layerOne: "レイヤー 1", layersNone: "レイヤーなし",
@@ -193,6 +197,8 @@ const STRINGS = {
   },
   en: {
     title: "Earthquake Radar",
+    features: "Map features", ftLabels: "Names", ftRivers: "Rivers & lakes", ftRoads: "Roads", ftRail: "Railways", ftBoundaries: "Boundaries", ftBuildings: "Buildings", ftTerrain: "Contours",
+    featuresUnavailable: "This browser can't draw the vector map, so a plain map is shown and features can't be switched.",
     basemap: "Base map", bmPale: "Light", bmStd: "Standard", bmPhoto: "Aerial", bmRelief: "Terrain",
     layerSegments: "Nankai segments", layerHistoric: "Historic quakes", layerHeat: "Density heatmap",
     mapSettings: "Map settings", nankaiLbl: "Nankai", nkOff: "Off", nkArea: "Source area", nkSegments: "Segments", layersOn: "{n} layers", layerOne: "1 layer", layersNone: "no layers",

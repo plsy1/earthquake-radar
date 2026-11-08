@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>震源速览 · Earthquake Radar</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@700&display=swap">
@@ -76,6 +77,17 @@
               <button type="button" data-v="photo" aria-pressed="false" data-i18n="bmPhoto">航拍</button>
               <button type="button" data-v="relief" aria-pressed="false" data-i18n="bmRelief">地形</button>
             </div></div>
+          <div class="row row-top" id="row-features"><span class="lbl" data-i18n="features">地图要素</span>
+            <div class="layers" id="features">
+              <label class="check"><input type="checkbox" data-feature="labels"> <span data-i18n="ftLabels">地名</span></label>
+              <label class="check"><input type="checkbox" data-feature="rivers"> <span data-i18n="ftRivers">河川・湖泊</span></label>
+              <label class="check"><input type="checkbox" data-feature="roads"> <span data-i18n="ftRoads">道路</span></label>
+              <label class="check"><input type="checkbox" data-feature="rail"> <span data-i18n="ftRail">铁路</span></label>
+              <label class="check"><input type="checkbox" data-feature="boundaries"> <span data-i18n="ftBoundaries">行政界</span></label>
+              <label class="check"><input type="checkbox" data-feature="buildings"> <span data-i18n="ftBuildings">建筑物</span></label>
+              <label class="check"><input type="checkbox" data-feature="terrain"> <span data-i18n="ftTerrain">等高线</span></label>
+            </div></div>
+          <div id="features-note" class="form-note" data-i18n="featuresUnavailable" hidden></div>
           <!-- The source area and its segments cover the same region, so only one is shown at a time. -->
           <div class="row"><span class="lbl" data-i18n="nankaiLbl">南海海槽</span>
             <div class="seg" id="nankai-mode">
@@ -121,6 +133,10 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- Vector base map: MapLibre draws GSI's vector tiles (a PMTiles archive) inside Leaflet. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pmtiles@3.2.1/dist/pmtiles.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

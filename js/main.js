@@ -1,11 +1,12 @@
 // Entry point: holds page state and wires data, map and panel together.
 import { REFRESH_MS, USGS_YEAR_REFRESH_MS } from "./config.js";
+import { FEATURE_GROUPS, setBasemap, setFeatureVisible } from "./basemap.js";
 import { fetchDetail, fetchEvents } from "./data.js";
 import { applyStatic, fmtClock, onLangChange, setLang, t } from "./i18n.js";
 import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
   drawHome, drawQuakes, drawStations, enterDetail, exitDetail, flyToView,
-  initMap, onMapClick, refreshMapLanguage, setBasemap, setHeatPoints, setHeatVisible, setHistoricVisible,
+  initMap, onMapClick, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
   setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible, setSegmentsVisible,
 } from "./map.js";
 import {
@@ -189,10 +190,28 @@ function setSource(source) {
   load();
 }
 
+// Which map features (names, rivers, roads…) are drawn; remembered per browser.
+const FEATURES_KEY = "quake-radar.features";
+const features = Object.fromEntries(FEATURE_GROUPS.map((g) => [g, g !== "terrain"]));
+try { Object.assign(features, JSON.parse(localStorage.getItem(FEATURES_KEY) || "{}")); } catch (_) { /* defaults */ }
+
 // ---- wiring ----
 applyStatic();
 applySourceUi(state.source);
-initMap($("map"));
+initMap($("map"), { basemap: state.basemap, features }).then((vector) => {
+  // Without the vector map the feature switches would do nothing, so hide them and say why.
+  $("row-features").hidden = !vector;
+  $("features-note").hidden = vector;
+});
+for (const box of document.querySelectorAll("#features input")) {
+  const g = box.dataset.feature;
+  box.checked = !!features[g];
+  box.addEventListener("change", () => {
+    features[g] = box.checked;
+    setFeatureVisible(g, box.checked);
+    try { localStorage.setItem(FEATURES_KEY, JSON.stringify(features)); } catch (_) { /* not remembered */ }
+  });
+}
 drawHome(state.home);
 setHomeLabel(state.home);
 setPickButton(false);

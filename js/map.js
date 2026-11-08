@@ -1,8 +1,9 @@
 // Leaflet map: base tiles, Nankai outline, home marker, earthquake circles.
 import {
-  BASEMAPS, COLOR, DARKTEXT, DEPTH_BANDS, HEAT_SCRIPT, HISTORIC_URL, NEAR_KM, ORDER, PLATE_LABELS, PLATES_URL,
+  COLOR, DARKTEXT, DEPTH_BANDS, HEAT_SCRIPT, HISTORIC_URL, NEAR_KM, ORDER, PLATE_LABELS, PLATES_URL,
   TILE_ATTRIBUTION_URL, TRENCH_LABELS, UNKNOWN_COLOR, VIEWS, depthBand,
 } from "./config.js";
+import { initBasemap } from "./basemap.js";
 import { getLang, intLabel, pick, placeName, t } from "./i18n.js";
 import { NANKAI, NANKAI_SEGMENTS, clipLon } from "./nankai.js";
 import { esc, rank } from "./util.js";
@@ -12,7 +13,6 @@ let map, nankaiLayer, homeLayer, quakeLayer, detailLayer;
 let userMoved = false; // once true, resizes no longer refit the whole country
 let legendEl, legendSource = "jma", attribution = "";
 let platesLines = null, platesLabels = null, platesOn = false;
-let baseLayer = null;
 let segmentsLayer = null, segmentsOn = false;
 let historicData = null, historicLayer = null, historicOn = false;
 let heatLayer = null, heatOn = false, heatPoints = [];
@@ -28,9 +28,10 @@ const legendHtml = () => (legendSource === "usgs"
 /** Circle color: JMA events by max intensity, USGS events by depth. */
 export const quakeColor = (e) => (e.source === "usgs" ? depthBand(e.loc.depth).color : COLOR[e.maxi] || UNKNOWN_COLOR);
 
-export function initMap(el) {
+/** Create the map. Resolves (via the returned promise) once the base map has settled. */
+export function initMap(el, { basemap, features }) {
   map = L.map(el, { zoomControl: true, preferCanvas: true }).fitBounds(VIEWS.jp.bounds);
-  setBasemap("pale");
+  const basemapReady = initBasemap(map, basemap, features);
   attribution = attributionHtml();
   map.attributionControl.addAttribution(attribution);
 
@@ -66,24 +67,13 @@ export function initMap(el) {
     return legendEl;
   };
   legend.addTo(map);
+  return basemapReady;
 }
 
 /** Show the intensity scale (JMA) or the depth scale (USGS). */
 export function setLegendSource(source) {
   legendSource = source;
   if (legendEl) legendEl.innerHTML = legendHtml();
-}
-
-// ---- base map ----
-
-export function setBasemap(key) {
-  const def = BASEMAPS[key] || BASEMAPS.pale;
-  if (baseLayer) map.removeLayer(baseLayer);
-  baseLayer = L.layerGroup(def.layers.map((l) => L.tileLayer(l.url, {
-    minZoom: 4, maxZoom: 18, maxNativeZoom: l.maxNativeZoom, minNativeZoom: l.minNativeZoom, opacity: l.opacity ?? 1,
-  }))).addTo(map);
-  // Only flat maps are inverted for dark mode; photos and terrain keep their colors.
-  map.getContainer().classList.toggle("basemap-invert", def.invertDark);
 }
 
 // ---- Nankai segments (1707 / 1854 / 1944–46 ruptures) ----

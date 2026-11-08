@@ -58,12 +58,15 @@ export const TRENCH_LABELS = [
   { key: "trRyukyu", lat: 25.6, lon: 129.4 },
 ];
 
-// GSI base maps. Light and standard maps are inverted in dark mode; photos and terrain are not.
+// GSI base maps. Light and standard are vector maps (GSI optimized vector tiles) with raster
+// fallbacks; aerial and terrain are raster with vector features drawn on top.
+// Flat maps are inverted in dark mode; photos and terrain are not.
 // Terrain (colored elevation) has no sea tiles and starts at zoom 5, so it sits on the light map.
 const GSI = "https://cyberjapandata.gsi.go.jp/xyz/";
+export const VECTOR_STYLE_URL = "https://gsi-cyberjapan.github.io/optimal_bvmap/style/std.json";
 export const BASEMAPS = {
-  pale: { layers: [{ url: GSI + "pale/{z}/{x}/{y}.png", maxNativeZoom: 18 }], invertDark: true },
-  std: { layers: [{ url: GSI + "std/{z}/{x}/{y}.png", maxNativeZoom: 18 }], invertDark: true },
+  pale: { vector: true, invertDark: true, fallback: [{ url: GSI + "pale/{z}/{x}/{y}.png", maxNativeZoom: 18 }] },
+  std: { vector: true, invertDark: true, fallback: [{ url: GSI + "std/{z}/{x}/{y}.png", maxNativeZoom: 18 }] },
   photo: { layers: [{ url: GSI + "seamlessphoto/{z}/{x}/{y}.jpg", maxNativeZoom: 18 }], invertDark: false },
   relief: {
     layers: [

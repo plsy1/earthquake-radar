@@ -13,7 +13,8 @@
 - 地图图层：南海海槽（设想震源区或按 1707 / 1854 / 1944・1946 破裂历史划分的三段，二选一）、
   板块边界（俯冲带、海沟和板块名称）、1891 年以来的历史大地震、地震密度热力图。
   "地图设置"可以折叠，折叠后标题旁仍显示当前底图和图层数
-- 底图可以在淡色、标准、航拍、地形（色别标高）之间切换
+- 底图可以在淡色、标准、航拍、地形（色别标高）之间切换。淡色和标准是国土地理院的**矢量地图**，
+  地名、河川・湖泊、道路、铁路、行政界、建筑物、等高线可以分别开关；航拍和地形上也会叠加选中的要素
 - 界面支持中文、日本語、English，首次打开按浏览器语言自动选择，可以在右上角切换。
   英文界面使用气象厅提供的英文地名
 
@@ -40,6 +41,7 @@ js/config.js      常量：数据地址、震度配色、地图视角、默认�
 js/data.js        读取并合并气象厅的地震报告
 js/usgs.js        读取 USGS 地震目录（日本周边）
 js/map.js         Leaflet 地图、震源圆点、南海海槽轮廓、图例
+js/basemap.js     底图：国土地理院矢量地图（MapLibre）和栅格底图，地图要素开关
 js/ui.js          右侧面板：统计、列表、按钮
 js/home.js        "我的位置"的读取和保存
 js/nankai.js      南海海槽设想震源区的近似坐标
@@ -58,7 +60,9 @@ Build command 留空，Build output directory 填 `/`。推送到 `main` 会自�
 
 - 地震数据：[气象厅 防災情報 JSON](https://www.jma.go.jp/bosai/quake/data/list.json)，各地震度来自同目录下每次地震的详细报告（[地震情報](https://www.jma.go.jp/bosai/map.html#contents=earthquake_map)）
 - USGS 地震目录：[FDSN Event Web Service](https://earthquake.usgs.gov/fdsnws/event/1/)，日本周边大约 M4 以上较完整
-- 底图：[国土地理院 淡色地図](https://maps.gsi.go.jp/development/ichiran.html)
+- 底图：[国土地理院 最適化ベクトルタイル](https://github.com/gsi-cyberjapan/optimal_bvmap)（标准地图风格，淡色版由页面调色生成）、
+  [地理院タイル](https://maps.gsi.go.jp/development/ichiran.html)（航拍、色别标高，以及浏览器不支持矢量地图时的备用底图）
+- 矢量地图渲染：[MapLibre GL JS](https://maplibre.org/) 4.7.1、[PMTiles](https://github.com/protomaps/PMTiles)、[maplibre-gl-leaflet](https://github.com/maplibre/maplibre-gl-leaflet)
 - 地图库：[Leaflet](https://leafletjs.com/) 1.9.4
 
 历史大地震的震中、震级和伤亡人数是常见引用值的概数，仅供参考。热力图使用 [Leaflet.heat](https://github.com/Leaflet/Leaflet.heat)。
