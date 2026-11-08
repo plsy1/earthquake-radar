@@ -3,69 +3,78 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>震源速览</title>
+<title>震源速览 · Earthquake Radar</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@700&display=swap">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<!-- Text in this file is the Chinese fallback; js/i18n.js fills in the chosen language. -->
 <div class="app">
   <header>
-    <h1>震源速览</h1>
-    <div class="sub">气象厅有感地震 · 最近约30天 · 颜色为各地观测到的最大震度</div>
-    <div class="status"><span class="dot" id="dot"></span><span id="status">正在读取气象厅数据…</span><button id="refresh" type="button">刷新</button></div>
+    <h1 data-i18n="title">震源速览</h1>
+    <div class="sub" data-i18n="subtitle">气象厅有感地震 · 最近约30天 · 颜色为各地观测到的最大震度</div>
+    <div class="status">
+      <span class="dot" id="dot"></span><span id="status" data-i18n="loading">正在读取气象厅数据…</span>
+      <button id="refresh" type="button" data-i18n="refresh">刷新</button>
+      <div class="seg lang" id="lang" role="group" aria-label="Language / 语言 / 言語">
+        <button type="button" data-v="zh" lang="zh-CN" aria-pressed="false">中文</button>
+        <button type="button" data-v="ja" lang="ja" aria-pressed="false">日本語</button>
+        <button type="button" data-v="en" lang="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
   </header>
   <div class="main">
-    <div id="map" role="region" aria-label="地震分布地图"></div>
+    <div id="map" role="region" data-i18n-aria="mapAria" aria-label="地震分布地图"></div>
     <aside>
       <div class="controls">
-        <div class="row"><span class="lbl">时间范围</span>
+        <div class="row"><span class="lbl" data-i18n="period">时间范围</span>
           <div class="seg" id="period">
-            <button type="button" data-v="24" aria-pressed="false">24小时</button>
-            <button type="button" data-v="168" aria-pressed="true">7天</button>
-            <button type="button" data-v="all" aria-pressed="false">全部</button>
+            <button type="button" data-v="24" aria-pressed="false" data-i18n="p24">24小时</button>
+            <button type="button" data-v="168" aria-pressed="true" data-i18n="p168">7天</button>
+            <button type="button" data-v="all" aria-pressed="false" data-i18n="pAll">全部</button>
           </div></div>
-        <div class="row"><span class="lbl">最大震度</span>
+        <div class="row"><span class="lbl" data-i18n="minInt">最大震度</span>
           <div class="seg" id="minint">
-            <button type="button" data-v="0" aria-pressed="true">全部</button>
-            <button type="button" data-v="2" aria-pressed="false">3以上</button>
-            <button type="button" data-v="3" aria-pressed="false">4以上</button>
-            <button type="button" data-v="4" aria-pressed="false">5弱以上</button>
+            <button type="button" data-v="0" aria-pressed="true" data-i18n="all">全部</button>
+            <button type="button" data-v="2" aria-pressed="false" data-i18n="min3">3以上</button>
+            <button type="button" data-v="3" aria-pressed="false" data-i18n="min4">4以上</button>
+            <button type="button" data-v="4" aria-pressed="false" data-i18n="min5">5弱以上</button>
           </div></div>
-        <div class="row"><span class="lbl">地图视角</span>
+        <div class="row"><span class="lbl" data-i18n="view">地图视角</span>
           <div class="seg" id="view">
-            <button type="button" data-v="jp" aria-pressed="false">全国</button>
-            <button type="button" data-v="tokai" aria-pressed="false">东海・南海</button>
-            <button type="button" data-v="home" aria-pressed="false">我的位置周边</button>
+            <button type="button" data-v="jp" data-i18n="vJp">全国</button>
+            <button type="button" data-v="tokai" data-i18n="vTokai">东海・南海</button>
+            <button type="button" data-v="home" data-i18n="vHome">我的位置周边</button>
           </div></div>
-        <div class="row"><span class="lbl">我的位置</span>
+        <div class="row"><span class="lbl" data-i18n="home">我的位置</span>
           <div class="seg">
             <span id="home-name" class="home-current"></span>
-            <button type="button" id="locate-home">使用当前位置</button>
+            <button type="button" id="locate-home" data-i18n="locate">使用当前位置</button>
             <button type="button" id="pick-home" aria-pressed="false">在地图上选择</button>
-            <button type="button" id="reset-home">清除</button>
+            <button type="button" id="reset-home" data-i18n="clear">清除</button>
           </div></div>
-        <label class="check"><input type="checkbox" id="nankai" checked> 显示南海海槽设想震源区（大致示意）</label>
+        <label class="check"><input type="checkbox" id="nankai" checked> <span data-i18n="nankai">显示南海海槽设想震源区（大致示意）</span></label>
       </div>
       <div id="overview" class="overview">
-      <div class="stats">
-        <div class="stat"><b id="s-count">–</b><span id="s-count-lbl">有感地震</span></div>
-        <div class="stat"><b id="s-maxi">–</b><span id="s-maxi-lbl">最强摇晃</span></div>
-        <div class="stat"><b id="s-mag">–</b><span id="s-mag-lbl">最大震级</span></div>
-        <div class="stat"><b id="s-near">–</b><span id="s-near-lbl">最新一次</span></div>
-      </div>
-      <ul id="list" aria-label="地震列表"><li class="empty">正在读取…</li></ul>
+        <div class="stats">
+          <div class="stat"><b id="s-count">–</b><span id="s-count-lbl"></span></div>
+          <div class="stat"><b id="s-maxi">–</b><span id="s-maxi-lbl"></span></div>
+          <div class="stat"><b id="s-mag">–</b><span id="s-mag-lbl"></span></div>
+          <div class="stat"><b id="s-near">–</b><span id="s-near-lbl"></span></div>
+        </div>
+        <ul id="list" data-i18n-aria="listAria" aria-label="地震列表"><li class="empty" data-i18n="loading">正在读取…</li></ul>
       </div>
       <section id="detail" class="detail" hidden aria-live="polite">
         <div class="detail-bar">
-          <button type="button" id="back">← 返回列表</button>
-          <span class="lbl">地图上的圆点是各观测点，红叉是震央</span>
+          <button type="button" id="back" data-i18n="back">← 返回列表</button>
+          <span class="lbl" data-i18n="detailHint">地图上的圆点是各观测点，红叉是震央</span>
         </div>
         <div id="detail-body"></div>
       </section>
-      <div class="foot">数据：<a href="https://www.jma.go.jp/bosai/map.html#contents=earthquake_map" target="_blank" rel="noopener">气象厅</a>（每60秒自动更新）· 底图：国土地理院 · 南海海槽范围按内阁府原图手工描绘，仅供参考</div>
+      <div class="foot" data-i18n-html="foot"></div>
     </aside>
   </div>
 </div>

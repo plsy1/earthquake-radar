@@ -26,13 +26,13 @@ export function toEvents(reports) {
     if (!r || !r.eid || (r.ttl || "").includes("遠地")) continue;
     let g = byId.get(r.eid);
     if (!g) {
-      g = { eid: r.eid, time: eidDate(r.eid), maxi: "", mag: "", anm: "", loc: null, dist: 0, detail: "" };
+      g = { eid: r.eid, time: eidDate(r.eid), maxi: "", mag: "", anm: "", anmEn: "", loc: null, dist: 0, detail: "" };
       byId.set(r.eid, g);
     }
     if (rank(r.maxi) > rank(g.maxi)) g.maxi = r.maxi;
     const loc = parseCod(r.cod);
-    if (loc && !g.loc) { g.loc = loc; g.mag = r.mag; g.anm = r.anm; }
-    if (!g.anm && r.anm) g.anm = r.anm;
+    if (loc && !g.loc) { g.loc = loc; g.mag = r.mag; g.anm = r.anm; g.anmEn = r.en_anm || ""; }
+    if (!g.anm && r.anm) { g.anm = r.anm; g.anmEn = r.en_anm || ""; }
     // The newest "hypocenter and intensity" report carries every station's reading.
     if (!g.detail && r.ttl === "震源・震度情報" && r.json) g.detail = r.json;
   }
@@ -47,17 +47,19 @@ export async function fetchEvents() {
   return toEvents(await res.json());
 }
 
-/** Station readings, city summary and comments from one detail report. */
+/** Station readings, city summary and comments (Japanese and English) from one detail report. */
 export function parseDetail(d) {
   const obs = d?.Body?.Intensity?.Observation;
   const stations = [], cities = [];
   for (const pref of obs?.Pref || []) {
     for (const area of pref.Area || []) {
       for (const city of area.City || []) {
-        if (rank(city.MaxInt) >= 0) cities.push({ pref: pref.Name, name: city.Name, int: city.MaxInt });
+        if (rank(city.MaxInt) >= 0) {
+          cities.push({ pref: pref.Name, prefEn: pref.enName || "", name: city.Name, nameEn: city.enName || "", int: city.MaxInt });
+        }
         for (const st of city.IntensityStation || []) {
           if (st.latlon && rank(st.Int) >= 0) {
-            stations.push({ name: st.Name, int: st.Int, lat: +st.latlon.lat, lon: +st.latlon.lon });
+            stations.push({ name: st.Name, nameEn: st.enName || "", int: st.Int, lat: +st.latlon.lat, lon: +st.latlon.lon });
           }
         }
       }
@@ -65,7 +67,8 @@ export function parseDetail(d) {
   }
   const c = d?.Body?.Comments || {};
   const comment = [c.ForecastComment?.Text, c.FreeFormComment].filter(Boolean).join("\n");
-  return { stations, cities, comment, maxInt: obs?.MaxInt || "" };
+  const commentEn = (c.ForecastComment?.enText || "").trim();
+  return { stations, cities, comment, commentEn, maxInt: obs?.MaxInt || "" };
 }
 
 const detailCache = new Map();

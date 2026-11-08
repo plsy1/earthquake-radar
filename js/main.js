@@ -1,16 +1,17 @@
 // Entry point: holds page state and wires data, map and panel together.
 import { REFRESH_MS } from "./config.js";
 import { fetchDetail, fetchEvents } from "./data.js";
+import { applyStatic, fmtClock, onLangChange, setLang, t } from "./i18n.js";
 import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
   drawHome, drawQuakes, drawStations, enterDetail, exitDetail, flyToView,
-  initMap, onMapClick, setNankaiVisible, setPickCursor,
+  initMap, onMapClick, refreshMapLanguage, setNankaiVisible, setPickCursor,
 } from "./map.js";
 import {
   bindSegment, renderDetail, renderList, renderStats, setHomeLabel, setHomeNote, setPickButton,
   setStatus, showDetailView, tooltipHtml,
 } from "./ui.js";
-import { $, fmtClock, km, rank } from "./util.js";
+import { $, km, rank } from "./util.js";
 
 const state = {
   events: [],
@@ -22,6 +23,8 @@ const state = {
   home: loadHome(),     // null until the viewer sets a location
   picking: false,
   selected: null,      // eid of the earthquake shown in the detail panel
+  updatedAt: null,     // time of the last successful load
+  loadFailed: false,
 };
 
 function visibleEvents() {
@@ -42,7 +45,7 @@ async function openDetail(e) {
   showDetailView(true);
   enterDetail(e);
   if (!e.detail) {
-    renderDetail(e, { home: state.home, message: "气象厅没有发布这次地震各地的震度。" });
+    renderDetail(e, { home: state.home, messageKey: "noDetail" });
     return;
   }
   renderDetail(e, { home: state.home });
@@ -52,10 +55,29 @@ async function openDetail(e) {
     drawStations(e, detail.stations);
     renderDetail(e, { home: state.home, detail });
   } catch (err) {
-    if (state.selected === e.eid) {
-      renderDetail(e, { home: state.home, message: "无法读取这次地震的各地震度，请稍后再试。" });
-    }
+    if (state.selected === e.eid) renderDetail(e, { home: state.home, messageKey: "detailFailed" });
   }
+}
+
+/** Redraw an open detail panel from the cached report (after a location or language change). */
+function refreshDetail() {
+  const sel = state.events.find((e) => e.eid === state.selected);
+  if (!sel || !sel.detail) return;
+  fetchDetail(sel.detail).then(
+    (detail) => {
+      if (state.selected !== sel.eid) return;
+      drawStations(sel, detail.stations);
+      renderDetail(sel, { home: state.home, detail });
+    },
+    () => {},
+  );
+}
+
+function showStatus() {
+  if (state.loadFailed) { setStatus(t("loadFailed"), false); return; }
+  if (!state.updatedAt) { setStatus(t("loading"), true); return; }
+  const freshNote = state.fresh.size ? t("fresh", { n: state.fresh.size }) : "";
+  setStatus(freshNote + t("updated", { t: fmtClock(state.updatedAt) }), true);
 }
 
 function closeDetail() {
@@ -69,12 +91,7 @@ function setHome(home) {
   drawHome(home);
   setHomeLabel(home);
   render();
-  // Refresh distances in an open detail panel (the report itself is cached).
-  const sel = state.events.find((e) => e.eid === state.selected);
-  if (sel && sel.detail) fetchDetail(sel.detail).then(
-    (detail) => { if (state.selected === sel.eid) renderDetail(sel, { home, detail }); },
-    () => {},
-  );
+  refreshDetail();
 }
 
 function setPicking(on) {
@@ -93,19 +110,24 @@ async function load() {
     const changed = sig !== state.sig;
     state.sig = sig;
     state.events = next;
-    const freshNote = state.fresh.size ? `有${state.fresh.size}次新地震 · ` : "";
-    setStatus(freshNote + "更新于 " + fmtClock.format(new Date()), true);
+    state.updatedAt = new Date();
+    state.loadFailed = false;
+    showStatus();
     if (changed) render();
   } catch (err) {
-    setStatus("无法读取气象厅数据，60秒后自动重试", false);
+    state.loadFailed = true;
+    showStatus();
     if (!state.events.length) render();
   }
 }
 
 // ---- wiring ----
+applyStatic();
 initMap($("map"));
 drawHome(state.home);
 setHomeLabel(state.home);
+setPickButton(false);
+renderStats([], state);
 
 bindSegment("period", (v) => { state.periodHours = v; render(); });
 bindSegment("minint", (v) => { state.minRank = +v; render(); });
@@ -121,7 +143,7 @@ $("pick-home").addEventListener("click", () => setPicking(!state.picking));
 $("reset-home").addEventListener("click", () => { setPicking(false); saveHome(null); setHome(null); });
 $("locate-home").addEventListener("click", async () => {
   setPicking(false);
-  setHomeNote("正在获取…");
+  setHomeNote(t("locating"));
   try {
     const home = await locateBrowser();
     saveHome(home);
@@ -129,7 +151,7 @@ $("locate-home").addEventListener("click", async () => {
     flyToView("home", home);
   } catch (msg) {
     setHomeLabel(state.home);
-    setHomeNote(String(msg));
+    setHomeNote(t(String(msg)));
   }
 });
 onMapClick((lat, lon) => {
@@ -140,8 +162,22 @@ onMapClick((lat, lon) => {
   setHome(home);
 });
 
+$("lang").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button");
+  if (b) setLang(b.dataset.v);
+});
+onLangChange(() => {
+  setHomeLabel(state.home);
+  setPickButton(state.picking);
+  drawHome(state.home);
+  refreshMapLanguage();
+  showStatus();
+  render();
+  refreshDetail();
+});
+
 $("refresh").addEventListener("click", load);
 load();
 setInterval(load, REFRESH_MS);
-// Refresh "x分钟前" labels even when no new data arrives.
+// Refresh the "x minutes ago" labels even when no new data arrives.
 setInterval(() => { if (state.events.length) render(); }, 5 * 60_000);

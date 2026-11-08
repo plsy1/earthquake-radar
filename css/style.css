@@ -100,3 +100,10 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .epi::before{transform:translate(-50%,-50%) rotate(45deg)}
 .epi::after{transform:translate(-50%,-50%) rotate(-45deg)}
 .seg button:disabled{opacity:.4;cursor:not-allowed;background:transparent}
+
+/* ---- languages ---- */
+:root:lang(ja){--f-display:"Noto Serif JP","Hiragino Mincho ProN",serif;--f-body:"Noto Sans JP","Hiragino Sans",system-ui,sans-serif}
+.status{flex-wrap:wrap}
+.status #status{white-space:nowrap}
+.status .lang{margin-left:4px;flex-wrap:nowrap}
+.status .lang button{font-family:var(--f-body);font-size:12px;padding:2px 8px}

@@ -19,21 +19,19 @@ export function saveHome(home) {
 }
 
 /** Rounded to about 10 m; that is plenty for distances to epicenters. */
-export const makeHome = (lat, lon) => ({ lat: +(+lat).toFixed(4), lon: +(+lon).toFixed(4), name: "我的位置" });
+export const makeHome = (lat, lon) => ({ lat: +(+lat).toFixed(4), lon: +(+lon).toFixed(4) });
 
 /**
  * Ask the browser for the current position. Resolves to a home, or rejects
- * with a message to show the viewer.
+ * with an i18n key describing why it failed.
  */
 export function locateBrowser() {
   return new Promise((resolve, reject) => {
-    if (!("geolocation" in navigator)) { reject("这个浏览器不支持获取位置"); return; }
+    if (!("geolocation" in navigator)) { reject("geoUnsupported"); return; }
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve(makeHome(pos.coords.latitude, pos.coords.longitude)),
       (err) => reject(
-        err.code === err.PERMISSION_DENIED ? "没有获得位置权限，可以改用「在地图上选择」"
-          : err.code === err.TIMEOUT ? "获取位置超时，请再试一次"
-          : "无法获取当前位置"),
+        err.code === err.PERMISSION_DENIED ? "geoDenied" : err.code === err.TIMEOUT ? "geoTimeout" : "geoFailed"),
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 10 * 60_000 },
     );
   });

@@ -1,6 +1,7 @@
-// Side panel: status line, controls, summary numbers, earthquake list.
-import { COLOR, DARKTEXT, LABEL, NEAR_KM, NEARBY_STATION_KM, ORDER, UNKNOWN_COLOR } from "./config.js";
-import { $, ago, depthText, esc, fmtTime, km, magText, rank } from "./util.js";
+// Side panel: status line, controls, summary numbers, earthquake list, detail.
+import { COLOR, DARKTEXT, NEAR_KM, NEARBY_STATION_KM, ORDER, UNKNOWN_COLOR } from "./config.js";
+import { ago, depthText, fmtTime, intLabel, magText, pick, placeName, t } from "./i18n.js";
+import { $, esc, km, rank } from "./util.js";
 
 export function setStatus(text, ok) {
   $("status").textContent = text;
@@ -8,11 +9,11 @@ export function setStatus(text, ok) {
 }
 
 export function setHomeLabel(home) {
-  $("home-name").textContent = home ? "已设置" : "未设置";
+  $("home-name").textContent = t(home ? "homeSet" : "homeUnset");
   $("reset-home").hidden = !home;
   const viewBtn = document.querySelector('#view button[data-v="home"]');
   viewBtn.disabled = !home;
-  viewBtn.title = home ? "" : "先设置我的位置";
+  viewBtn.title = home ? "" : t("homeFirst");
 }
 
 /** Short notes next to the location controls, e.g. while asking the browser. */
@@ -23,7 +24,7 @@ export function setHomeNote(text) {
 export function setPickButton(on) {
   const b = $("pick-home");
   b.setAttribute("aria-pressed", String(on));
-  b.textContent = on ? "点击地图上的位置…" : "在地图上选择";
+  b.textContent = t(on ? "picking" : "pick");
 }
 
 /** A row of toggle buttons where exactly one is pressed. */
@@ -38,8 +39,10 @@ export function bindSegment(id, onChange) {
 }
 
 export function tooltipHtml(e) {
-  return `<b>${esc(e.anm || "震源不明")}</b> · ${magText(e.mag)} · 最大震度${LABEL[e.maxi] || "–"}<br>` +
-    `${fmtTime.format(e.time)}（${ago(e.time)}）· 点击查看各地震度`;
+  return t("tooltip", {
+    place: esc(placeName(e)), mag: magText(e.mag), int: intLabel(e.maxi),
+    time: fmtTime(e.time), ago: ago(e.time),
+  });
 }
 
 /** Switch the side panel between the earthquake list and one earthquake's detail. */
@@ -50,11 +53,9 @@ export function showDetailView(on) {
 }
 
 function chipEl(maxi, cls = "chip") {
-  const c = document.createElement("div");
-  c.className = cls;
+  const c = el("div", cls, intLabel(maxi));
   c.style.background = COLOR[maxi] || UNKNOWN_COLOR;
   c.style.color = DARKTEXT.has(maxi) ? "#1a1a1a" : "#fff";
-  c.textContent = LABEL[maxi] || "–";
   return c;
 }
 
@@ -65,11 +66,13 @@ function el(tag, cls, text) {
   return n;
 }
 
+const roundKm = (d) => (d < 10 ? d.toFixed(1) : Math.round(d));
+
 /**
  * Detail panel for one earthquake. `detail` is the parsed JMA report, or absent
- * while loading; `message` replaces the intensity section (loading or error text).
+ * while loading; `messageKey` replaces the intensity section (loading or error).
  */
-export function renderDetail(e, { home, detail, message }) {
+export function renderDetail(e, { home, detail, messageKey }) {
   const body = $("detail-body");
   body.textContent = "";
 
@@ -78,20 +81,21 @@ export function renderDetail(e, { home, detail, message }) {
   const head = el("div");
   head.style.minWidth = "0";
   head.append(
-    el("h2", null, e.anm || "震源不明"),
-    el("div", "facts", `${fmtTime.format(e.time)}（${ago(e.time)}）`),
-    el("div", "facts", `${magText(e.mag)} · ${depthText(e.loc.depth)} · 北纬${e.loc.lat} 东经${e.loc.lon}`),
+    el("h2", null, placeName(e)),
+    el("div", "facts", t("whenAgo", { time: fmtTime(e.time), ago: ago(e.time) })),
+    el("div", "facts", `${magText(e.mag)} · ${depthText(e.loc.depth)} · ${t("coords", { lat: e.loc.lat, lon: e.loc.lon })}`),
   );
-  if (home) head.appendChild(el("div", "facts", `距我的位置约 ${Math.round(e.dist)} km`));
+  if (home) head.appendChild(el("div", "facts", t("distFromMe", { d: Math.round(e.dist) })));
   top.appendChild(head);
   body.appendChild(top);
 
   if (!detail) {
-    body.appendChild(el("div", "empty", message || "正在读取各地震度…"));
+    body.appendChild(el("div", "empty", t(messageKey || "loadingDetail")));
     return;
   }
 
-  if (detail.comment) body.appendChild(el("div", "note", detail.comment));
+  const comment = pick(detail.comment, detail.commentEn);
+  if (comment) body.appendChild(el("div", "note", comment));
 
   // The station nearest to "my location" is the best guess at how it felt there.
   if (home && detail.stations.length) {
@@ -105,45 +109,42 @@ export function renderDetail(e, { home, detail, message }) {
     // station means the shaking most likely wasn't felt here.
     if (nearKm <= NEARBY_STATION_KM) {
       mine.append(
-        el("span", "lbl", `离${home.name}最近的观测点`),
-        document.createTextNode(`${near.name}（约 ${nearKm < 10 ? nearKm.toFixed(1) : Math.round(nearKm)} km）：震度${LABEL[near.int]}`),
+        el("span", "lbl", t("nearestLbl")),
+        document.createTextNode(t("nearestText", { name: pick(near.name, near.nameEn), d: roundKm(nearKm), int: intLabel(near.int) })),
       );
     } else {
-      mine.append(
-        el("span", "lbl", `${home.name}附近`),
-        document.createTextNode(`${NEARBY_STATION_KM} km 以内没有观测点记录到震度1以上，那里应该基本感觉不到。`),
-      );
+      mine.append(el("span", "lbl", t("nearbyLbl")), document.createTextNode(t("nearbyNone", { km: NEARBY_STATION_KM })));
     }
     body.appendChild(mine);
   }
 
   if (!detail.cities.length) {
-    body.appendChild(el("div", "empty", "这次报告里没有各地的震度。"));
+    body.appendChild(el("div", "empty", t("noCities")));
     return;
   }
 
-  body.appendChild(el("div", "lbl groups-title", `各地震度 · ${detail.cities.length} 个市区町村 · ${detail.stations.length} 个观测点`));
+  body.appendChild(el("div", "lbl groups-title", t("groupsTitle", { c: detail.cities.length, s: detail.stations.length })));
   for (const maxi of [...ORDER].reverse()) {
     const cities = detail.cities.filter((c) => c.int === maxi);
     if (!cities.length) continue;
     const group = el("div", "group");
     group.appendChild(chipEl(maxi));
     const box = el("div", "cities");
-    const lines = [];
     const byPref = new Map();
     for (const c of cities) {
-      if (!byPref.has(c.pref)) byPref.set(c.pref, []);
-      byPref.get(c.pref).push(c.name);
+      const pref = pick(c.pref, c.prefEn);
+      if (!byPref.has(pref)) byPref.set(pref, []);
+      byPref.get(pref).push(pick(c.name, c.nameEn));
     }
-    for (const [pref, names] of byPref) {
+    const lines = [...byPref].map(([pref, names]) => {
       const line = el("div");
-      line.append(el("span", "pref", pref), document.createTextNode(names.join("、")));
-      lines.push(line);
-    }
+      line.append(el("span", "pref", pref), document.createTextNode(names.join(t("nameSep"))));
+      return line;
+    });
     // Long lists of weak shaking fold away; the strong groups stay open.
     if (cities.length > 24) {
       const det = el("details");
-      det.appendChild(el("summary", null, `${cities.length} 个市区町村，${byPref.size} 个都道府县（展开）`));
+      det.appendChild(el("summary", null, t("fold", { c: cities.length, p: byPref.size })));
       det.append(...lines);
       box.appendChild(det);
     } else {
@@ -154,7 +155,7 @@ export function renderDetail(e, { home, detail, message }) {
   }
 }
 
-const PERIOD_TEXT = { "24": "最近24小时", "168": "最近7天", all: "最近约30天" };
+const SCOPE_KEY = { "24": "scope24", "168": "scope168", all: "scopeAll" };
 
 /**
  * Four summary tiles for the earthquakes currently shown. Labels say which
@@ -163,22 +164,23 @@ const PERIOD_TEXT = { "24": "最近24小时", "168": "最近7天", all: "最近�
 export function renderStats(list, { home, periodHours, minRank }) {
   const top = list.reduce((a, b) => (!a || rank(b.maxi) > rank(a.maxi) ? b : a), null);
   const big = list.reduce((a, b) => (!a || (+b.mag || 0) > (+a.mag || 0) ? b : a), null);
-  const scope = PERIOD_TEXT[periodHours] || "";
-  const filter = minRank > 0 ? `震度${LABEL[ORDER[minRank]]}以上的` : "有感";
+  const scope = t(SCOPE_KEY[periodHours]);
 
   $("s-count").textContent = list.length;
-  $("s-count-lbl").textContent = `${scope}${filter}地震`;
-  $("s-maxi").textContent = top ? "震度" + (LABEL[top.maxi] || "–") : "–";
-  $("s-maxi-lbl").textContent = top ? `摇得最强 · ${top.anm}` : "摇得最强";
+  $("s-count-lbl").textContent = minRank > 0
+    ? t("countMin", { scope, v: intLabel(ORDER[minRank]) })
+    : t("countFelt", { scope });
+  $("s-maxi").textContent = top ? t("int", { v: intLabel(top.maxi) }) : "–";
+  $("s-maxi-lbl").textContent = top ? `${t("strongest")} · ${placeName(top)}` : t("strongest");
   $("s-mag").textContent = big && !isNaN(+big.mag) ? magText(big.mag) : "–";
-  $("s-mag-lbl").textContent = big ? `震级最大 · ${big.anm}` : "震级最大";
+  $("s-mag-lbl").textContent = big ? `${t("largest")} · ${placeName(big)}` : t("largest");
   if (home) {
     $("s-near").textContent = list.filter((e) => e.dist != null && e.dist <= NEAR_KM).length;
-    $("s-near-lbl").textContent = `震源在我的位置${NEAR_KM}km内`;
+    $("s-near-lbl").textContent = t("nearCount", { km: NEAR_KM });
   } else {
     // Newest first, so list[0] is the latest earthquake.
     $("s-near").textContent = list.length ? ago(list[0].time) : "–";
-    $("s-near-lbl").textContent = list.length ? `最新一次 · ${list[0].anm}` : "最新一次";
+    $("s-near-lbl").textContent = list.length ? `${t("latest")} · ${placeName(list[0])}` : t("latest");
   }
 }
 
@@ -186,39 +188,26 @@ export function renderList(list, { home, fresh, hasAny, onSelect }) {
   const ul = $("list");
   ul.textContent = "";
   if (!list.length) {
-    const li = document.createElement("li");
-    li.className = "empty";
-    li.textContent = hasAny ? "这个范围内没有符合条件的地震。换一个时间范围或震度试试。" : "暂时没有数据。";
-    ul.appendChild(li);
+    ul.appendChild(el("li", "empty", t(hasAny ? "emptyFiltered" : "emptyNone")));
     return;
   }
   for (const e of list) ul.appendChild(listItem(e, home, fresh.has(e.eid), onSelect));
 }
 
 function listItem(e, home, isFresh, onSelect) {
-  const li = document.createElement("li");
+  const li = el("li", isFresh ? "fresh" : null);
   li.tabIndex = 0;
-  if (isFresh) li.className = "fresh";
 
   const chip = chipEl(e.maxi);
-  chip.title = "最大震度";
+  chip.title = t("chipTitle");
 
-  const mid = document.createElement("div");
+  const mid = el("div");
   mid.style.minWidth = "0";
-  const place = document.createElement("div");
-  place.className = "place";
-  place.textContent = e.anm || "震源不明";
-  const meta = document.createElement("div");
-  meta.className = "meta";
-  meta.textContent = `${fmtTime.format(e.time)} · ${ago(e.time)}` + (home ? ` · 距我${Math.round(e.dist)}km` : "");
-  mid.append(place, meta);
+  const meta = `${fmtTime(e.time)} · ${ago(e.time)}` + (home ? t("listDist", { d: Math.round(e.dist) }) : "");
+  mid.append(el("div", "place", placeName(e)), el("div", "meta", meta));
 
-  const mag = document.createElement("div");
-  mag.className = "mag";
-  mag.textContent = magText(e.mag);
-  const depth = document.createElement("small");
-  depth.textContent = depthText(e.loc.depth);
-  mag.appendChild(depth);
+  const mag = el("div", "mag", magText(e.mag));
+  mag.appendChild(el("small", null, depthText(e.loc.depth)));
 
   li.append(chip, mid, mag);
   li.addEventListener("click", () => onSelect(e));

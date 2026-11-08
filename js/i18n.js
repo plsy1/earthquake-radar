@@ -1,0 +1,275 @@
+// Interface language: Chinese, Japanese and English strings, plus the
+// language-dependent formatting of times, depths, magnitudes and place names.
+
+const LANGS = ["zh", "ja", "en"];
+const LANG_KEY = "quake-radar.lang";
+const HTML_LANG = { zh: "zh-CN", ja: "ja", en: "en" };
+const LOCALE = { zh: "zh-CN", ja: "ja-JP", en: "en-GB" };
+
+// Intensity class names as each language writes them.
+const INT_LABEL = {
+  zh: { "5-": "5弱", "5+": "5强", "6-": "6弱", "6+": "6强" },
+  ja: { "5-": "5弱", "5+": "5強", "6-": "6弱", "6+": "6強" },
+  en: { "5-": "5−", "5+": "5+", "6-": "6−", "6+": "6+" },
+};
+
+const JMA_LINK = '<a href="https://www.jma.go.jp/bosai/map.html#contents=earthquake_map" target="_blank" rel="noopener">';
+
+const STRINGS = {
+  zh: {
+    title: "震源速览",
+    subtitle: "气象厅有感地震 · 最近约30天 · 颜色为各地观测到的最大震度",
+    loading: "正在读取气象厅数据…",
+    refresh: "刷新",
+    mapAria: "地震分布地图",
+    period: "时间范围", p24: "24小时", p168: "7天", pAll: "全部",
+    minInt: "最大震度", all: "全部", min3: "3以上", min4: "4以上", min5: "5弱以上",
+    view: "地图视角", vJp: "全国", vTokai: "东海・南海", vHome: "我的位置周边",
+    home: "我的位置", homeSet: "已设置", homeUnset: "未设置",
+    locate: "使用当前位置", pick: "在地图上选择", picking: "点击地图上的位置…", clear: "清除",
+    locating: "正在获取…", homeFirst: "先设置我的位置",
+    geoUnsupported: "这个浏览器不支持获取位置",
+    geoDenied: "没有获得位置权限，可以改用「在地图上选择」",
+    geoTimeout: "获取位置超时，请再试一次",
+    geoFailed: "无法获取当前位置",
+    nankai: "显示南海海槽设想震源区（大致示意）",
+    listAria: "地震列表",
+    back: "← 返回列表",
+    detailHint: "地图上的圆点是各观测点，红叉是震央",
+    foot: `数据：${JMA_LINK}气象厅</a>（每60秒自动更新）· 底图：国土地理院 · 南海海槽范围按内阁府原图手工描绘，仅供参考`,
+    legend: "最大震度 · 圆越大震级越高",
+    attribution: "国土地理院",
+    updated: "更新于 {t}",
+    fresh: "有{n}次新地震 · ",
+    loadFailed: "无法读取气象厅数据，60秒后自动重试",
+    unknownPlace: "震源不明",
+    magUnknown: "M不明",
+    depthUnknown: "深度不明", depthShallow: "极浅", depth: "深{d}km",
+    justNow: "刚刚", minAgo: "{n}分钟前", hourAgo: "{n}小时前", dayAgo: "{n}天前",
+    int: "震度{v}",
+    tooltip: "<b>{place}</b> · {mag} · 最大震度{int}<br>{time}（{ago}）· 点击查看各地震度",
+    whenAgo: "{time}（{ago}）",
+    coords: "北纬{lat} 东经{lon}",
+    distFromMe: "距我的位置约 {d} km",
+    loadingDetail: "正在读取各地震度…",
+    noDetail: "气象厅没有发布这次地震各地的震度。",
+    detailFailed: "无法读取这次地震的各地震度，请稍后再试。",
+    nearestLbl: "离我的位置最近的观测点",
+    nearestText: "{name}（约 {d} km）：震度{int}",
+    nearbyLbl: "我的位置附近",
+    nearbyNone: "{km} km 以内没有观测点记录到震度1以上，那里应该基本感觉不到。",
+    noCities: "这次报告里没有各地的震度。",
+    groupsTitle: "各地震度 · {c} 个市区町村 · {s} 个观测点",
+    fold: "{c} 个市区町村，{p} 个都道府县（展开）",
+    nameSep: "、",
+    scope24: "最近24小时", scope168: "最近7天", scopeAll: "最近约30天",
+    countFelt: "{scope}有感地震",
+    countMin: "{scope}震度{v}以上的地震",
+    strongest: "摇得最强", largest: "震级最大",
+    nearCount: "震源在我的位置{km}km内",
+    latest: "最新一次",
+    chipTitle: "最大震度",
+    emptyFiltered: "这个范围内没有符合条件的地震。换一个时间范围或震度试试。",
+    emptyNone: "暂时没有数据。",
+    listDist: " · 距我{d}km",
+    epicenter: "震央",
+    station: "{name} · 震度{int}",
+  },
+  ja: {
+    title: "地震レーダー",
+    subtitle: "気象庁の有感地震・直近約30日・色は各地で観測された最大震度",
+    loading: "気象庁のデータを読み込み中…",
+    refresh: "更新",
+    mapAria: "地震の分布図",
+    period: "期間", p24: "24時間", p168: "7日", pAll: "すべて",
+    minInt: "最大震度", all: "すべて", min3: "3以上", min4: "4以上", min5: "5弱以上",
+    view: "表示範囲", vJp: "全国", vTokai: "東海・南海", vHome: "マイ地点周辺",
+    home: "マイ地点", homeSet: "設定済み", homeUnset: "未設定",
+    locate: "現在地を使う", pick: "地図で選ぶ", picking: "地図をクリックしてください…", clear: "解除",
+    locating: "取得中…", homeFirst: "先にマイ地点を設定してください",
+    geoUnsupported: "このブラウザは位置情報に対応していません",
+    geoDenied: "位置情報が許可されませんでした。「地図で選ぶ」を使ってください",
+    geoTimeout: "位置情報の取得がタイムアウトしました。もう一度お試しください",
+    geoFailed: "現在地を取得できませんでした",
+    nankai: "南海トラフ巨大地震の想定震源域を表示（概略）",
+    listAria: "地震の一覧",
+    back: "← 一覧に戻る",
+    detailHint: "地図の点は各観測点、赤い×は震央です",
+    foot: `データ：${JMA_LINK}気象庁</a>（60秒ごとに自動更新）・地図：国土地理院・南海トラフの範囲は内閣府の図をもとにした概略です`,
+    legend: "最大震度・円が大きいほどマグニチュードが大きい",
+    attribution: "国土地理院",
+    updated: "{t} 更新",
+    fresh: "新しい地震 {n} 件・",
+    loadFailed: "気象庁のデータを取得できません。60秒後に再試行します",
+    unknownPlace: "震源不明",
+    magUnknown: "M不明",
+    depthUnknown: "深さ不明", depthShallow: "ごく浅い", depth: "深さ{d}km",
+    justNow: "たった今", minAgo: "{n}分前", hourAgo: "{n}時間前", dayAgo: "{n}日前",
+    int: "震度{v}",
+    tooltip: "<b>{place}</b>・{mag}・最大震度{int}<br>{time}（{ago}）・クリックで各地の震度",
+    whenAgo: "{time}（{ago}）",
+    coords: "北緯{lat} 東経{lon}",
+    distFromMe: "マイ地点から約 {d} km",
+    loadingDetail: "各地の震度を読み込み中…",
+    noDetail: "気象庁はこの地震の各地の震度を発表していません。",
+    detailFailed: "この地震の各地の震度を取得できませんでした。しばらくしてからお試しください。",
+    nearestLbl: "マイ地点に最も近い観測点",
+    nearestText: "{name}（約 {d} km）：震度{int}",
+    nearbyLbl: "マイ地点の周辺",
+    nearbyNone: "{km} km 以内に震度1以上を観測した地点はありません。揺れはほとんど感じなかったはずです。",
+    noCities: "この報告には各地の震度がありません。",
+    groupsTitle: "各地の震度・{c} 市区町村・{s} 観測点",
+    fold: "{c} 市区町村・{p} 都道府県（開く）",
+    nameSep: "、",
+    scope24: "直近24時間", scope168: "直近7日", scopeAll: "直近約30日",
+    countFelt: "{scope}の有感地震",
+    countMin: "{scope}の震度{v}以上の地震",
+    strongest: "最も強い揺れ", largest: "最大マグニチュード",
+    nearCount: "マイ地点から{km}km以内",
+    latest: "最新",
+    chipTitle: "最大震度",
+    emptyFiltered: "条件に合う地震はありません。期間や震度を変えてみてください。",
+    emptyNone: "データがありません。",
+    listDist: " · {d}km先",
+    epicenter: "震央",
+    station: "{name}・震度{int}",
+  },
+  en: {
+    title: "Earthquake Radar",
+    subtitle: "Felt earthquakes from JMA · last ~30 days · color shows the maximum observed intensity",
+    loading: "Loading JMA data…",
+    refresh: "Refresh",
+    mapAria: "Earthquake map",
+    period: "Period", p24: "24 h", p168: "7 days", pAll: "All",
+    minInt: "Max intensity", all: "All", min3: "3 and up", min4: "4 and up", min5: "5− and up",
+    view: "View", vJp: "Japan", vTokai: "Tokai–Nankai", vHome: "Near me",
+    home: "My location", homeSet: "Set", homeUnset: "Not set",
+    locate: "Use my location", pick: "Pick on map", picking: "Click the map…", clear: "Clear",
+    locating: "Locating…", homeFirst: "Set your location first",
+    geoUnsupported: "This browser can't share its location",
+    geoDenied: "Location permission was denied. Use “Pick on map” instead",
+    geoTimeout: "Getting your location timed out. Try again",
+    geoFailed: "Couldn't get your location",
+    nankai: "Show the Nankai Trough assumed source region (approx.)",
+    listAria: "Earthquake list",
+    back: "← Back to list",
+    detailHint: "Dots are stations; the red × is the epicenter",
+    foot: `Data: ${JMA_LINK}JMA</a> (refreshed every 60 s) · Base map: GSI Japan · Nankai outline is hand-traced from the Cabinet Office map and approximate`,
+    legend: "Max intensity · larger circle = larger magnitude",
+    attribution: "GSI Japan",
+    updated: "Updated {t}",
+    fresh: "{n} new · ",
+    loadFailed: "Couldn't load JMA data. Retrying in 60 s",
+    unknownPlace: "Unknown epicenter",
+    magUnknown: "M unknown",
+    depthUnknown: "depth unknown", depthShallow: "very shallow", depth: "{d} km deep",
+    justNow: "just now", minAgo: "{n} min ago", hourAgo: "{n} h ago", dayAgo: "{n} d ago",
+    int: "Int. {v}",
+    tooltip: "<b>{place}</b> · {mag} · max intensity {int}<br>{time} ({ago}) · click for local intensities",
+    whenAgo: "{time} ({ago})",
+    coords: "{lat}°N {lon}°E",
+    distFromMe: "About {d} km from you",
+    loadingDetail: "Loading local intensities…",
+    noDetail: "JMA did not publish local intensities for this earthquake.",
+    detailFailed: "Couldn't load local intensities. Try again shortly.",
+    nearestLbl: "Nearest station to you",
+    nearestText: "{name} (about {d} km): intensity {int}",
+    nearbyLbl: "Around you",
+    nearbyNone: "No station within {km} km recorded intensity 1 or more, so it was probably not felt there.",
+    noCities: "This report has no local intensities.",
+    groupsTitle: "Local intensities · {c} municipalities · {s} stations",
+    fold: "{c} municipalities in {p} prefectures (show)",
+    nameSep: ", ",
+    scope24: "last 24 h", scope168: "last 7 days", scopeAll: "last ~30 days",
+    countFelt: "Felt earthquakes, {scope}",
+    countMin: "Intensity {v}+ earthquakes, {scope}",
+    strongest: "Strongest shaking", largest: "Largest magnitude",
+    nearCount: "Within {km} km of you",
+    latest: "Latest",
+    chipTitle: "Max intensity",
+    emptyFiltered: "No earthquakes match. Try another period or intensity.",
+    emptyNone: "No data yet.",
+    listDist: " · {d} km away",
+    epicenter: "Epicenter",
+    station: "{name} · intensity {int}",
+  },
+};
+
+function detect() {
+  try {
+    const saved = localStorage.getItem(LANG_KEY);
+    if (LANGS.includes(saved)) return saved;
+  } catch (_) { /* storage blocked */ }
+  for (const l of navigator.languages || [navigator.language || ""]) {
+    const code = l.toLowerCase().slice(0, 2);
+    if (LANGS.includes(code)) return code;
+  }
+  return "en";
+}
+
+let lang = detect();
+const listeners = [];
+
+export const getLang = () => lang;
+
+/** Change language, remember it, refresh static text and notify listeners. */
+export function setLang(next) {
+  if (!LANGS.includes(next) || next === lang) return;
+  lang = next;
+  try { localStorage.setItem(LANG_KEY, next); } catch (_) { /* not remembered */ }
+  applyStatic();
+  for (const fn of listeners) fn(lang);
+}
+
+export const onLangChange = (fn) => listeners.push(fn);
+
+/** Look up a string and fill {placeholders}. */
+export function t(key, vars) {
+  const s = STRINGS[lang][key] ?? STRINGS.en[key] ?? key;
+  return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : s;
+}
+
+/** Fill every element marked with data-i18n (text), data-i18n-html, -title or -aria. */
+export function applyStatic() {
+  document.documentElement.lang = HTML_LANG[lang];
+  document.title = t("title");
+  for (const n of document.querySelectorAll("[data-i18n]")) n.textContent = t(n.dataset.i18n);
+  for (const n of document.querySelectorAll("[data-i18n-html]")) n.innerHTML = t(n.dataset.i18nHtml);
+  for (const n of document.querySelectorAll("[data-i18n-aria]")) n.setAttribute("aria-label", t(n.dataset.i18nAria));
+  for (const b of document.querySelectorAll("#lang button")) b.setAttribute("aria-pressed", String(b.dataset.v === lang));
+}
+
+// ---- formatting ----
+
+export const intLabel = (maxi) => INT_LABEL[lang][maxi] || maxi || "–";
+
+const fmtCache = {};
+function formatter(kind) {
+  const key = lang + kind;
+  if (!fmtCache[key]) {
+    const opts = kind === "clock"
+      ? { hour: "2-digit", minute: "2-digit", second: "2-digit" }
+      : { month: lang === "en" ? "short" : "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" };
+    fmtCache[key] = new Intl.DateTimeFormat(LOCALE[lang], { timeZone: "Asia/Tokyo", hour12: false, ...opts });
+  }
+  return fmtCache[key];
+}
+/** Times are always shown in Japan time, the zone JMA reports in. */
+export const fmtTime = (d) => formatter("time").format(d);
+export const fmtClock = (d) => formatter("clock").format(d);
+
+export function ago(date) {
+  const m = Math.round((Date.now() - date) / 60000);
+  if (m < 1) return t("justNow");
+  if (m < 60) return t("minAgo", { n: m });
+  const h = Math.floor(m / 60);
+  if (h < 48) return t("hourAgo", { n: h });
+  return t("dayAgo", { n: Math.floor(h / 24) });
+}
+
+export const depthText = (d) => (d == null ? t("depthUnknown") : d === 0 ? t("depthShallow") : t("depth", { d }));
+export const magText = (m) => (m && !isNaN(+m) ? "M" + (+m).toFixed(1) : t("magUnknown"));
+
+/** JMA gives Japanese names and English romanizations; English uses the latter. */
+export const pick = (ja, en) => (lang === "en" && en ? en : ja);
+export const placeName = (e) => pick(e.anm, e.anmEn) || t("unknownPlace");

@@ -14,7 +14,6 @@ export const HOME_KEY = "quake-radar.home";
 
 // JMA seismic-intensity classes, weakest first.
 export const ORDER = ["1", "2", "3", "4", "5-", "5+", "6-", "6+", "7"];
-export const LABEL = { "1": "1", "2": "2", "3": "3", "4": "4", "5-": "5弱", "5+": "5强", "6-": "6弱", "6+": "6强", "7": "7" };
 // JMA's standard seismic-intensity colors.
 export const COLOR = { "1": "#F2F2FF", "2": "#00AAFF", "3": "#0041FF", "4": "#FAE696", "5-": "#FFE600", "5+": "#FF9900", "6-": "#FF2800", "6+": "#A50021", "7": "#B40068" };
 export const UNKNOWN_COLOR = "#9aa5b1";
@@ -27,4 +26,4 @@ export const VIEWS = {
 };
 
 export const TILE_URL = "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png";
-export const TILE_ATTRIBUTION = '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>';
+export const TILE_ATTRIBUTION_URL = "https://maps.gsi.go.jp/development/ichiran.html";
