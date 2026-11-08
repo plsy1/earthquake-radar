@@ -24,6 +24,8 @@ function groupOf(layer) {
 }
 
 let map, glLayer = null, rasterLayer = null;
+let lowZoom = false;        // vector tiles start at zoom 4, i.e. Leaflet zoom 5
+const VECTOR_MIN_ZOOM = 5;
 let baseStyle = null;       // GSI style as downloaded, each layer tagged with its group
 let vectorFailed = false;
 let current = "pale";
@@ -83,8 +85,9 @@ function buildStyle(key) {
 
 function rasterFor(key) {
   const def = BASEMAPS[key];
-  // Vector bases fall back to their raster twin when vector tiles are unavailable.
-  const layers = def.vector ? (vectorFailed ? def.fallback : []) : def.layers;
+  // Vector bases use their raster twin when vector tiles are unavailable, or when zoomed
+  // out past the vector tiles' first level.
+  const layers = def.vector ? (vectorFailed || lowZoom ? def.fallback : []) : def.layers;
   if (!layers.length) return null;
   return L.layerGroup(layers.map((l) => L.tileLayer(l.url, {
     minZoom: 4, maxZoom: 18, maxNativeZoom: l.maxNativeZoom, minNativeZoom: l.minNativeZoom,
@@ -96,7 +99,11 @@ function applyBase() {
   if (rasterLayer) map.removeLayer(rasterLayer);
   rasterLayer = rasterFor(current);
   if (rasterLayer) rasterLayer.addTo(map);
-  if (glLayer) glLayer.getMaplibreMap().setStyle(buildStyle(current));
+  if (glLayer) {
+    glLayer.getMaplibreMap().setStyle(buildStyle(current));
+    // Below the first vector level the vector canvas would only paint its background.
+    glLayer.getContainer().style.visibility = lowZoom && BASEMAPS[current].vector ? "hidden" : "";
+  }
   // Only flat maps are inverted for dark mode; photos and terrain keep their colors.
   map.getContainer().classList.toggle("basemap-invert", BASEMAPS[current].invertDark);
 }
@@ -115,7 +122,12 @@ export async function initBasemap(leafletMap, key, initialFeatures) {
   current = key;
   features = { ...initialFeatures };
   vectorFailed = true; // raster placeholder until the vector map is ready
+  lowZoom = map.getZoom() < VECTOR_MIN_ZOOM;
   applyBase();
+  map.on("zoomend", () => {
+    const low = map.getZoom() < VECTOR_MIN_ZOOM;
+    if (low !== lowZoom) { lowZoom = low; applyBase(); }
+  });
   try {
     const gl = window.maplibregl, pm = window.pmtiles;
     if (!gl || !pm || !L.maplibreGL) throw new Error("vector libraries missing");
@@ -132,8 +144,9 @@ export async function initBasemap(leafletMap, key, initialFeatures) {
     glLayer.addTo(map);
     glLayer.getContainer().style.zIndex = 5; // above raster tiles, below everything else
     // Swap the placeholder out once the first vector frame is drawn.
+    glLayer.getContainer().style.visibility = lowZoom && BASEMAPS[current].vector ? "hidden" : "";
     glLayer.getMaplibreMap().once("idle", () => {
-      if (rasterLayer && BASEMAPS[current].vector) { map.removeLayer(rasterLayer); rasterLayer = null; }
+      if (rasterLayer && BASEMAPS[current].vector && !lowZoom) { map.removeLayer(rasterLayer); rasterLayer = null; }
     });
     return true;
   } catch (err) {

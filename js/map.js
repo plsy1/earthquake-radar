@@ -16,6 +16,8 @@ let platesLines = null, platesLabels = null, platesOn = false;
 let segmentsLayer = null, segmentsOn = false;
 let historicData = null, historicLayer = null, historicOn = false;
 let heatLayer = null, heatOn = false, heatPoints = [];
+let afterLayer = null, afterRenderer = null;   // aftershocks of the selected earthquake
+let profileLayer = null, profileBtn = null;     // depth profile line and its map button
 
 const attributionHtml = () => `<a href="${TILE_ATTRIBUTION_URL}" target="_blank" rel="noopener">${t("attribution")}</a>`;
 const swatch = (bg, dark, text, wide) =>
@@ -42,6 +44,11 @@ export function initMap(el, { basemap, features }) {
   map.createPane("segments").style.zIndex = 340;
   map.createPane("plates").style.zIndex = 350;
   map.createPane("historic").style.zIndex = 620;
+  // Aftershocks draw above station dots, on their own canvas.
+  map.createPane("aftershocks").style.zIndex = 450;
+  afterRenderer = L.canvas({ pane: "aftershocks" });
+  afterLayer = L.layerGroup();
+  profileLayer = L.layerGroup().addTo(map);
   // Segment names stay readable above the earthquake circles; they ignore the pointer.
   map.createPane("topLabels").style.zIndex = 610;
   map.getPane("topLabels").style.pointerEvents = "none";
@@ -67,6 +74,19 @@ export function initMap(el, { basemap, features }) {
     return legendEl;
   };
   legend.addTo(map);
+
+  // "Profile" button under the zoom control opens the depth profile panel.
+  const pc = L.control({ position: "topleft" });
+  pc.onAdd = () => {
+    const wrap = L.DomUtil.create("div", "leaflet-bar profile-ctl");
+    profileBtn = L.DomUtil.create("button", "", wrap);
+    profileBtn.type = "button";
+    profileBtn.textContent = t("profileBtn");
+    L.DomEvent.disableClickPropagation(wrap);
+    L.DomEvent.on(profileBtn, "click", () => onProfileClick && onProfileClick());
+    return wrap;
+  };
+  pc.addTo(map);
   return basemapReady;
 }
 
@@ -225,6 +245,7 @@ export async function setPlatesVisible(on) {
 
 /** Re-label the legend, plate names and attribution after a language change. */
 export function refreshMapLanguage() {
+  if (profileBtn) profileBtn.textContent = t("profileBtn");
   if (legendEl) legendEl.innerHTML = legendHtml();
   if (platesLabels) {
     map.removeLayer(platesLabels);
@@ -288,6 +309,8 @@ export function enterDetail(e) {
   map.removeLayer(quakeLayer);
   detailLayer.clearLayers();
   detailLayer.addTo(map);
+  afterLayer.clearLayers();
+  afterLayer.addTo(map);
   addEpicenter(e);
   map.flyTo([e.loc.lat, e.loc.lon], Math.max(map.getZoom(), 7), { duration: 0.8 });
 }
@@ -315,7 +338,50 @@ export function drawStations(e, stations) {
 export function exitDetail() {
   map.removeLayer(detailLayer);
   detailLayer.clearLayers();
+  map.removeLayer(afterLayer);
+  afterLayer.clearLayers();
   quakeLayer.addTo(map);
+}
+
+/** Aftershocks of the selected earthquake as hollow rings, inside a dashed search circle. */
+export function drawAftershocks(main, list, radiusKm, tooltipFor) {
+  afterLayer.clearLayers();
+  L.circle([main.loc.lat, main.loc.lon], {
+    radius: radiusKm * 1000, renderer: afterRenderer, interactive: false,
+    color: "#b0127a", weight: 1.2, dashArray: "5 5", fill: false,
+  }).addTo(afterLayer);
+  for (const e of list) {
+    const mag = +e.mag || 1;
+    L.circleMarker([e.loc.lat, e.loc.lon], {
+      renderer: afterRenderer, radius: Math.max(3, 1.5 + (mag - 1) * 1.4),
+      color: "#b0127a", weight: 1.4, fillColor: "#fff", fillOpacity: 0.7,
+    }).bindTooltip(tooltipFor(e), { direction: "top" }).addTo(afterLayer);
+  }
+}
+
+// ---- depth profile line ----
+
+let onProfileClick = null;
+export const setProfileHandler = (fn) => { onProfileClick = fn; };
+
+const endIcon = (label) => L.divIcon({ className: "profile-end", html: label, iconSize: [18, 18], iconAnchor: [9, 9] });
+
+/** Draw A (and B when known) with the searched band around the line. */
+export function drawProfile(A, B, band) {
+  profileLayer.clearLayers();
+  if (band) {
+    L.polygon(band, { interactive: false, color: "#2c6fbb", weight: 1, dashArray: "4 4", fillColor: "#2c6fbb", fillOpacity: 0.08 }).addTo(profileLayer);
+  }
+  if (A && B) L.polyline([[A.lat, A.lon], [B.lat, B.lon]], { interactive: false, color: "#2c6fbb", weight: 2.5 }).addTo(profileLayer);
+  if (A) L.marker([A.lat, A.lon], { icon: endIcon("A"), interactive: false, keyboard: false }).addTo(profileLayer);
+  if (B) L.marker([B.lat, B.lon], { icon: endIcon("B"), interactive: false, keyboard: false }).addTo(profileLayer);
+}
+
+export function clearProfile() { profileLayer.clearLayers(); }
+
+export function fitProfile(band) {
+  userMoved = true;
+  map.flyToBounds(L.latLngBounds(band).pad(0.1), { duration: 0.8 });
 }
 
 function addEpicenter(e) {

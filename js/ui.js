@@ -1,6 +1,7 @@
 // Side panel: status line, controls, summary numbers, earthquake list, detail.
 import { COLOR, DARKTEXT, NEAR_KM, NEARBY_STATION_KM, ORDER, UNKNOWN_COLOR, depthBand } from "./config.js";
 import { ago, depthText, fmtTime, intLabel, magText, pick, placeName, t } from "./i18n.js";
+import { mtChart, profileChart } from "./charts.js";
 import { $, esc, km, rank } from "./util.js";
 
 export function setStatus(text, ok) {
@@ -83,11 +84,75 @@ export function tooltipHtml(e) {
   });
 }
 
-/** Switch the side panel between the earthquake list and one earthquake's detail. */
-export function showDetailView(on) {
-  $("overview").hidden = on;
-  $("detail").hidden = !on;
-  if (on) $("detail").scrollTop = 0;
+/** Show one of the side panel's views: the list, one earthquake's detail, or the depth profile. */
+export function showPanel(name) {
+  for (const id of ["overview", "detail", "profile"]) $(id).hidden = id !== name;
+  if (name !== "overview") $(name).scrollTop = 0;
+}
+export const showDetailView = (on) => showPanel(on ? "detail" : "overview");
+
+const quakeLine = (e) => `${placeName(e)} · ${magText(e.mag)} · ${fmtTime(e.time)}`;
+
+/** Aftershock block: count, largest, magnitude–time diagram and what the data covers. */
+function renderAftershocks(body, main, info) {
+  if (!info) return;
+  const box = el("section", "note aftershocks");
+  const n = info.list.length;
+  box.append(el("span", "lbl", t("asTitle")));
+  const head = el("div", "as-head");
+  head.append(el("b", "as-count", t("asCount", { n })), el("span", "as-scope", t("asScope", { r: info.radiusKm })));
+  box.appendChild(head);
+  if (n) {
+    const big = info.list.reduce((a, b) => ((+b.mag || 0) > (+a.mag || 0) ? b : a));
+    box.appendChild(el("div", null, t("asLargest", { q: quakeLine(big), ago: ago(big.time) })));
+  } else {
+    box.appendChild(el("div", null, t("asNone")));
+  }
+  const { svg, days } = mtChart({ main, list: info.list, labelFor: quakeLine, cumLabel: (k) => t("mtCum", { n: k }) });
+  const wrap = el("div", "chart-wrap");
+  wrap.appendChild(svg);
+  wrap.appendChild(el("div", "chart-cap", t(days ? "mtAxisDays" : "mtAxisHours")));
+  box.appendChild(wrap);
+  box.appendChild(el("div", "chart-cap", t(main.source === "usgs" ? "asLimitUsgs" : "asLimitJma")));
+  // JMA's standard advice after strong shaking, shown during the first week.
+  const recent = Date.now() - main.time < 7 * 86400e3;
+  if (recent && (rank(main.maxi) >= rank("5-") || +main.mag >= 6)) box.appendChild(el("div", "as-advice", t("asAdvice")));
+  body.appendChild(box);
+}
+
+/**
+ * Depth profile panel. `result` is from depthProfile(); `picking` is "A"/"B" while
+ * the viewer is drawing a line; `suggestUsgs` adds a button to load USGS · 1 year.
+ */
+export function renderProfile({ result, widthKm, picking, suggestUsgs }) {
+  $("profile-hint").textContent = picking
+    ? t(picking === "A" ? "profileDrawingA" : "profileDrawingB")
+    : t("profileHint", { w: widthKm });
+  const box = $("profile-chart");
+  box.textContent = "";
+  if (result && !picking) {
+    if (!result.points.length) {
+      box.appendChild(el("div", "empty", t("profileEmpty")));
+    } else {
+      const { svg, stretch } = profileChart({
+        lengthKm: result.lengthKm, points: result.points,
+        labelFor: (p) => `${placeName(p.e)} · ${magText(p.e.mag)} · ${depthText(p.depth)} · ${fmtTime(p.e.time)}`,
+      });
+      box.appendChild(svg);
+      const cap = [t("profileAxes"), t("profileCount", { n: result.points.length })];
+      if (stretch >= 1.2) cap.push(t("profileStretch", { k: stretch.toFixed(1) }));
+      box.appendChild(el("div", "chart-cap", cap.join(" · ")));
+    }
+  }
+  if (suggestUsgs) {
+    const tip = el("div", "note mine profile-tip");
+    tip.appendChild(el("div", null, t("profileTip")));
+    const b = el("button", null, t("profileUseUsgs"));
+    b.type = "button";
+    b.dataset.action = "use-usgs";
+    tip.appendChild(b);
+    box.appendChild(tip);
+  }
 }
 
 /** Chip for a list row or detail header: intensity for JMA, magnitude on a depth color for USGS. */
@@ -120,7 +185,7 @@ const roundKm = (d) => (d < 10 ? d.toFixed(1) : Math.round(d));
  * Detail panel for one earthquake. `detail` is the parsed JMA report, or absent
  * while loading; `messageKey` replaces the intensity section (loading or error).
  */
-export function renderDetail(e, { home, detail, messageKey }) {
+export function renderDetail(e, { home, detail, messageKey, aftershocks }) {
   const body = $("detail-body");
   body.textContent = "";
 
@@ -137,10 +202,11 @@ export function renderDetail(e, { home, detail, messageKey }) {
   top.appendChild(head);
   body.appendChild(top);
 
-  if (e.source === "usgs") { renderUsgsNotes(body, e); return; }
+  if (e.source === "usgs") { renderAftershocks(body, e, aftershocks); renderUsgsNotes(body, e); return; }
 
   if (!detail) {
     body.appendChild(el("div", "empty", t(messageKey || "loadingDetail")));
+    renderAftershocks(body, e, aftershocks);
     return;
   }
 
@@ -167,6 +233,8 @@ export function renderDetail(e, { home, detail, messageKey }) {
     }
     body.appendChild(mine);
   }
+
+  renderAftershocks(body, e, aftershocks);
 
   if (!detail.cities.length) {
     body.appendChild(el("div", "empty", t("noCities")));

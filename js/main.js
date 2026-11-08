@@ -1,17 +1,18 @@
 // Entry point: holds page state and wires data, map and panel together.
+import { PROFILE_PRESETS, depthProfile, findAftershocks, profileBand } from "./analysis.js";
 import { REFRESH_MS, USGS_YEAR_REFRESH_MS } from "./config.js";
 import { FEATURE_GROUPS, setBasemap, setFeatureVisible } from "./basemap.js";
 import { fetchDetail, fetchEvents } from "./data.js";
 import { applyStatic, fmtClock, onLangChange, setLang, t } from "./i18n.js";
 import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
-  drawHome, drawQuakes, drawStations, enterDetail, exitDetail, flyToView,
-  initMap, onMapClick, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
-  setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible, setSegmentsVisible,
+  clearProfile, drawAftershocks, drawHome, drawProfile, drawQuakes, drawStations, enterDetail, exitDetail,
+  fitProfile, flyToView, initMap, onMapClick, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
+  setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible, setProfileHandler, setSegmentsVisible,
 } from "./map.js";
 import {
-  applySourceUi, bindSegment, pressSegment, renderDetail, renderList, renderStats, setHomeLabel,
-  setHomeNote, setMapSettingsOpen, setPickButton, setStatus, showDetailView, tooltipHtml, updateMapSummary,
+  applySourceUi, bindSegment, pressSegment, renderDetail, renderList, renderProfile, renderStats, setHomeLabel,
+  setHomeNote, setMapSettingsOpen, setPickButton, setStatus, showDetailView, showPanel, tooltipHtml, updateMapSummary,
 } from "./ui.js";
 import { USGS_DAYS, fetchUsgs } from "./usgs.js";
 import { $, km, rank } from "./util.js";
@@ -39,6 +40,8 @@ const state = {
   nankaiMode: "area",  // "off" | "area" | "segments"
   picking: false,
   selected: null,      // eid of the earthquake shown in the detail panel
+  // Depth profile: line A→B, half-width of the band, chosen preset, and "A"/"B" while drawing.
+  profile: { open: false, A: null, B: null, widthKm: 100, preset: null, picking: null },
 };
 
 const cur = () => state.feeds[state.source];
@@ -64,44 +67,112 @@ function render() {
   setHeatPoints(list);
   renderStats(list, state);
   renderList(list, { home: state.home, fresh: f.fresh, hasAny: f.events.length > 0, onSelect: openDetail });
+  if (state.profile.open) renderProfilePanel();
+}
+
+/** Aftershocks of `e` among everything loaded for this source, drawn on the map too. */
+function aftershocksFor(e) {
+  const info = findAftershocks(e, cur().events);
+  drawAftershocks(e, info.list, info.radiusKm, tooltipHtml);
+  return info;
 }
 
 async function openDetail(e) {
+  // While a point is being picked on the map, clicks on circles belong to the picking.
+  if (state.picking || state.profile.picking) return;
+  closeProfile();
   state.selected = e.eid;
   showDetailView(true);
   enterDetail(e);
+  const aftershocks = aftershocksFor(e);
   if (e.source === "usgs") {
-    renderDetail(e, { home: state.home });
+    renderDetail(e, { home: state.home, aftershocks });
     return;
   }
   if (!e.detail) {
-    renderDetail(e, { home: state.home, messageKey: "noDetail" });
+    renderDetail(e, { home: state.home, messageKey: "noDetail", aftershocks });
     return;
   }
-  renderDetail(e, { home: state.home });
+  renderDetail(e, { home: state.home, aftershocks });
   try {
     const detail = await fetchDetail(e.detail);
     if (state.selected !== e.eid) return; // the viewer moved on while it loaded
     drawStations(e, detail.stations);
-    renderDetail(e, { home: state.home, detail });
+    renderDetail(e, { home: state.home, detail, aftershocks });
   } catch (err) {
-    if (state.selected === e.eid) renderDetail(e, { home: state.home, messageKey: "detailFailed" });
+    if (state.selected === e.eid) renderDetail(e, { home: state.home, messageKey: "detailFailed", aftershocks });
   }
 }
 
-/** Redraw an open detail panel (after a location or language change); JMA reports are cached. */
-function refreshDetail() {
+/**
+ * Redraw an open detail panel after new data, a location or a language change.
+ * JMA reports are cached; stations are redrawn (and the map refit) only when asked.
+ */
+function refreshDetail({ stations = false } = {}) {
   const sel = cur().events.find((e) => e.eid === state.selected);
   if (!sel) return;
-  if (sel.source === "usgs" || !sel.detail) { renderDetail(sel, { home: state.home }); return; }
+  const aftershocks = aftershocksFor(sel);
+  if (sel.source === "usgs" || !sel.detail) {
+    renderDetail(sel, { home: state.home, aftershocks, messageKey: sel.source === "usgs" ? undefined : "noDetail" });
+    return;
+  }
   fetchDetail(sel.detail).then(
     (detail) => {
       if (state.selected !== sel.eid) return;
-      drawStations(sel, detail.stations);
-      renderDetail(sel, { home: state.home, detail });
+      if (stations) drawStations(sel, detail.stations);
+      renderDetail(sel, { home: state.home, detail, aftershocks });
     },
     () => {},
   );
+}
+
+// ---- depth profile ----
+
+function renderProfilePanel() {
+  const p = state.profile;
+  const result = p.A && p.B ? depthProfile(visibleEvents(), p.A, p.B, p.widthKm) : null;
+  const suggestUsgs = !(state.source === "usgs" && state.periodHours === "year");
+  renderProfile({ result, widthKm: p.widthKm, picking: p.picking, suggestUsgs });
+  for (const b of $("profile-presets").querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.preset === p.preset));
+  $("profile-draw").setAttribute("aria-pressed", String(!!p.picking));
+}
+
+function drawProfileLine(fit) {
+  const p = state.profile;
+  const band = p.A && p.B ? profileBand(p.A, p.B, p.widthKm) : null;
+  drawProfile(p.A, p.B, band);
+  if (fit && band) fitProfile(band);
+}
+
+function setProfilePicking(which) {
+  state.profile.picking = which;
+  setPickCursor(!!which);
+}
+
+function usePreset(key) {
+  const p = state.profile, pr = PROFILE_PRESETS[key];
+  p.A = { ...pr.A }; p.B = { ...pr.B }; p.preset = key;
+  setProfilePicking(null);
+  drawProfileLine(true);
+  renderProfilePanel();
+}
+
+function openProfile() {
+  closeDetail();
+  setPicking(false);
+  state.profile.open = true;
+  showPanel("profile");
+  if (!state.profile.A) usePreset("tohoku");
+  else { drawProfileLine(true); renderProfilePanel(); }
+}
+
+function closeProfile() {
+  const p = state.profile;
+  if (!p.open) return;
+  p.open = false;
+  setProfilePicking(null);
+  clearProfile();
+  showPanel("overview");
 }
 
 function closeDetail() {
@@ -163,7 +234,10 @@ async function load() {
     f.failed = false;
     f.loading = false;
     showStatus();
-    if (changed) render();
+    if (changed) {
+      render();
+      if (state.selected) refreshDetail(); // keep the aftershock count current
+    }
   } catch (err) {
     f.loading = false;
     f.failed = true;
@@ -263,7 +337,35 @@ for (const [id, show] of [["plates", setPlatesVisible], ["historic", setHistoric
   });
 }
 $("back").addEventListener("click", closeDetail);
-document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeDetail(); });
+document.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Escape") return;
+  if (state.profile.picking) { setProfilePicking(null); renderProfilePanel(); return; }
+  closeDetail();
+  closeProfile();
+});
+
+setProfileHandler(() => (state.profile.open ? closeProfile() : openProfile()));
+$("profile-back").addEventListener("click", closeProfile);
+$("profile-presets").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button");
+  if (b) usePreset(b.dataset.preset);
+});
+bindSegment("profile-width", (v) => {
+  state.profile.widthKm = +v;
+  drawProfileLine(false);
+  renderProfilePanel();
+});
+$("profile-draw").addEventListener("click", () => {
+  setPicking(false);
+  setProfilePicking(state.profile.picking ? null : "A");
+  renderProfilePanel();
+});
+$("profile-chart").addEventListener("click", (ev) => {
+  if (!ev.target.closest('[data-action="use-usgs"]')) return;
+  state.periodHours = "year";
+  pressSegment("period", "year");
+  if (state.source === "usgs") { render(); load(); } else { pressSegment("source", "usgs"); setSource("usgs"); }
+});
 
 $("pick-home").addEventListener("click", () => setPicking(!state.picking));
 $("reset-home").addEventListener("click", () => { setPicking(false); saveHome(null); setHome(null); });
@@ -281,6 +383,21 @@ $("locate-home").addEventListener("click", async () => {
   }
 });
 onMapClick((lat, lon) => {
+  const p = state.profile;
+  if (p.picking === "A") {
+    p.A = { lat, lon }; p.B = null; p.preset = null;
+    p.picking = "B";
+    drawProfileLine(false);
+    renderProfilePanel();
+    return;
+  }
+  if (p.picking === "B") {
+    p.B = { lat, lon };
+    setProfilePicking(null);
+    drawProfileLine(false);
+    renderProfilePanel();
+    return;
+  }
   if (!state.picking) return;
   const home = makeHome(lat, lon);
   saveHome(home);
@@ -301,7 +418,7 @@ onLangChange(() => {
   refreshMapLanguage();
   showStatus();
   render();
-  refreshDetail();
+  refreshDetail({ stations: true });
 });
 
 $("refresh").addEventListener("click", load);

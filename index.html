@@ -127,6 +127,31 @@
         </div>
         <div id="detail-body"></div>
       </section>
+      <section id="profile" class="detail" hidden aria-live="polite">
+        <div class="detail-bar">
+          <button type="button" id="profile-back" data-i18n="back">← 返回列表</button>
+          <span class="lbl" data-i18n="profileTitle">深度剖面图</span>
+        </div>
+        <div class="controls">
+          <div class="row row-top"><span class="lbl" data-i18n="profilePresets">预设</span>
+            <div class="actions" id="profile-presets">
+              <button type="button" data-preset="tohoku" aria-pressed="false" data-i18n="preTohoku">东北・日本海沟</button>
+              <button type="button" data-preset="kuril" aria-pressed="false" data-i18n="preKuril">北海道・千岛海沟</button>
+              <button type="button" data-preset="nankai" aria-pressed="false" data-i18n="preNankai">纪伊半岛・南海海槽</button>
+              <button type="button" data-preset="izu" aria-pressed="false" data-i18n="preIzu">伊豆・小笠原海沟</button>
+            </div></div>
+          <div class="row"><span class="lbl" data-i18n="profileWidth">宽度</span>
+            <div class="seg" id="profile-width">
+              <button type="button" data-v="50" aria-pressed="false">±50 km</button>
+              <button type="button" data-v="100" aria-pressed="true">±100 km</button>
+              <button type="button" data-v="200" aria-pressed="false">±200 km</button>
+            </div></div>
+          <div class="row"><span class="lbl" data-i18n="profileLine">剖面线</span>
+            <div class="actions"><button type="button" id="profile-draw" aria-pressed="false" data-i18n="profileDraw">在地图上画线</button></div></div>
+        </div>
+        <div id="profile-hint" class="note lbl"></div>
+        <div id="profile-chart" class="profile-chart"></div>
+      </section>
       <div class="foot" data-i18n-html="foot"></div>
     </aside>
   </div>
