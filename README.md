@@ -7,6 +7,8 @@
 - 按时间（24 小时 / 7 天 / 全部）和最大震度筛选
 - 可以在地图上点选"我的位置"，列表会显示每次地震离你多远，并标出 100 km 范围
   （位置只保存在你自己的浏览器里，默认是名古屋站）
+- 点击列表或地图上的地震，可以看这次地震的详情：各观测点的震度分布图、按震度分组的市区町村、
+  海啸说明，以及离"我的位置"最近的观测点测到的震度
 - 可以叠加南海海槽巨大地震设想震源区的大致轮廓
 
 在线版：<https://earthquake-radar.pages.dev>
@@ -44,7 +46,7 @@ Build command 留空，Build output directory 填 `/`。推送到 `main` 会自�
 
 ## 数据来源
 
-- 地震数据：[气象厅 防災情報 JSON](https://www.jma.go.jp/bosai/quake/data/list.json)（[地震情報](https://www.jma.go.jp/bosai/map.html#contents=earthquake_map)）
+- 地震数据：[气象厅 防災情報 JSON](https://www.jma.go.jp/bosai/quake/data/list.json)，各地震度来自同目录下每次地震的详细报告（[地震情報](https://www.jma.go.jp/bosai/map.html#contents=earthquake_map)）
 - 底图：[国土地理院 淡色地図](https://maps.gsi.go.jp/development/ichiran.html)
 - 地图库：[Leaflet](https://leafletjs.com/) 1.9.4
 

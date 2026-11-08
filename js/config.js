@@ -1,8 +1,12 @@
 // Settings and constants shared by every module.
 
 export const SRC = "https://www.jma.go.jp/bosai/quake/data/list.json";
+// Each report in the list names a detail file under this folder.
+export const DETAIL_BASE = "https://www.jma.go.jp/bosai/quake/data/";
 export const REFRESH_MS = 60_000;
 export const NEAR_KM = 100;
+// In the detail panel, the closest station within this distance stands in for "my location".
+export const NEARBY_STATION_KM = 40;
 
 // Distances are measured from "my location". The default is a public landmark;
 // each viewer can pick their own point on the map, kept only in their browser.

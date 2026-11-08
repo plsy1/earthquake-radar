@@ -4,9 +4,8 @@ import { NANKAI } from "./nankai.js";
 import { esc, rank } from "./util.js";
 
 const L = window.L;
-let map, nankaiLayer, homeLayer, quakeLayer;
+let map, nankaiLayer, homeLayer, quakeLayer, detailLayer;
 let userMoved = false; // once true, resizes no longer refit the whole country
-const markers = new Map();
 
 export function initMap(el) {
   map = L.map(el, { zoomControl: true, preferCanvas: true }).fitBounds(VIEWS.jp.bounds);
@@ -17,6 +16,7 @@ export function initMap(el) {
   }).addTo(map);
   homeLayer = L.layerGroup().addTo(map);
   quakeLayer = L.layerGroup().addTo(map);
+  detailLayer = L.layerGroup();
 
   // The container can get its real size only after Leaflet starts (or while the tab is
   // hidden). Keep fitting all of Japan on resize until the viewer moves the map.
@@ -56,10 +56,9 @@ export function drawHome(home) {
   }).addTo(homeLayer);
 }
 
-/** Draw one circle per earthquake; `list` is newest first. */
-export function drawQuakes(list, popupFor) {
+/** Draw one circle per earthquake; `list` is newest first. Clicking a circle selects it. */
+export function drawQuakes(list, { tooltipFor, onSelect }) {
   quakeLayer.clearLayers();
-  markers.clear();
   // Strongest and newest on top.
   const drawOrder = [...list].sort((a, b) => rank(a.maxi) - rank(b.maxi) || a.time - b.time);
   for (const e of drawOrder) {
@@ -67,9 +66,9 @@ export function drawQuakes(list, popupFor) {
     const radius = isNaN(m) ? 5 : Math.max(4, 3 + m * 2.4);
     const c = L.circleMarker([e.loc.lat, e.loc.lon], {
       radius, color: "#222", weight: 0.8, fillColor: COLOR[e.maxi] || UNKNOWN_COLOR, fillOpacity: 0.88,
-    }).bindPopup(() => popupFor(e));
+    }).bindTooltip(() => tooltipFor(e), { direction: "top", offset: [0, -radius] })
+      .on("click", () => onSelect(e));
     c.addTo(quakeLayer);
-    markers.set(e.eid, c);
   }
   if (list.length) {
     const latest = list[0];
@@ -80,11 +79,48 @@ export function drawQuakes(list, popupFor) {
   }
 }
 
-export function focusQuake(e) {
+// ---- detail mode: one earthquake's epicenter and every station's intensity ----
+
+/** Hide the other earthquakes and mark the selected epicenter. */
+export function enterDetail(e) {
   userMoved = true;
-  map.flyTo([e.loc.lat, e.loc.lon], Math.max(map.getZoom(), 8), { duration: 0.8 });
-  const mk = markers.get(e.eid);
-  if (mk) setTimeout(() => mk.openPopup(), 850);
+  map.removeLayer(quakeLayer);
+  detailLayer.clearLayers();
+  detailLayer.addTo(map);
+  addEpicenter(e);
+  map.flyTo([e.loc.lat, e.loc.lon], Math.max(map.getZoom(), 7), { duration: 0.8 });
+}
+
+/** Plot station readings, weakest first so strong ones sit on top, and frame the shaking. */
+export function drawStations(e, stations) {
+  detailLayer.clearLayers();
+  const sorted = [...stations].sort((a, b) => rank(a.int) - rank(b.int));
+  for (const s of sorted) {
+    const r = rank(s.int);
+    L.circleMarker([s.lat, s.lon], {
+      radius: 3.5 + r * 0.7, color: "#333", weight: 0.6, fillColor: COLOR[s.int] || UNKNOWN_COLOR, fillOpacity: 0.95,
+    }).bindTooltip(`${esc(s.name)} · 震度${LABEL[s.int]}`, { direction: "top" }).addTo(detailLayer);
+  }
+  addEpicenter(e);
+
+  // Frame stations of intensity 3 and up when there are enough; otherwise all of them.
+  const strong = stations.filter((s) => rank(s.int) >= 2);
+  const pts = (strong.length >= 3 ? strong : stations).map((s) => [s.lat, s.lon]);
+  pts.push([e.loc.lat, e.loc.lon]);
+  if (pts.length > 1) map.flyToBounds(L.latLngBounds(pts).pad(0.15), { duration: 0.8, maxZoom: 10 });
+}
+
+export function exitDetail() {
+  map.removeLayer(detailLayer);
+  detailLayer.clearLayers();
+  quakeLayer.addTo(map);
+}
+
+function addEpicenter(e) {
+  L.marker([e.loc.lat, e.loc.lon], {
+    icon: L.divIcon({ className: "", html: '<div class="epi" aria-label="震央"></div>', iconSize: [24, 24], iconAnchor: [12, 12] }),
+    keyboard: false, title: "震央 " + (e.anm || ""), zIndexOffset: 1000,
+  }).addTo(detailLayer);
 }
 
 export function flyToView(key, home) {

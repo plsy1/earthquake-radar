@@ -48,6 +48,7 @@
           </div></div>
         <label class="check"><input type="checkbox" id="nankai" checked> 显示南海海槽设想震源区（大致示意）</label>
       </div>
+      <div id="overview" class="overview">
       <div class="stats">
         <div class="stat"><b id="s-count">–</b><span>地震次数</span></div>
         <div class="stat"><b id="s-maxi">–</b><span id="s-maxi-at">最大震度</span></div>
@@ -55,6 +56,14 @@
         <div class="stat"><b id="s-near">–</b><span id="s-near-lbl">距我的位置100km以内</span></div>
       </div>
       <ul id="list" aria-label="地震列表"><li class="empty">正在读取…</li></ul>
+      </div>
+      <section id="detail" class="detail" hidden aria-live="polite">
+        <div class="detail-bar">
+          <button type="button" id="back">← 返回列表</button>
+          <span class="lbl">地图上的圆点是各观测点，红叉是震央</span>
+        </div>
+        <div id="detail-body"></div>
+      </section>
       <div class="foot">数据：<a href="https://www.jma.go.jp/bosai/map.html#contents=earthquake_map" target="_blank" rel="noopener">气象厅</a>（每60秒自动更新）· 底图：国土地理院 · 南海海槽范围按内阁府原图手工描绘，仅供参考</div>
     </aside>
   </div>
