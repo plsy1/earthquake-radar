@@ -88,7 +88,11 @@ export function initMap(el, { basemap, features }) {
     el.addEventListener(t, () => { userMoved = true; }, { passive: true, once: true });
   }
   new ResizeObserver(() => {
+    // A layout change re-centers the map; that is not the viewer moving it.
+    const was = movingToPreset;
+    movingToPreset = true;
     map.invalidateSize();
+    movingToPreset = was;
     if (!userMoved && map.getSize().y > 50) presetMove(() => map.fitBounds(VIEWS.jp.bounds));
   }).observe(el);
   // Any move that isn't one of the preset views means no preset is current any more.
