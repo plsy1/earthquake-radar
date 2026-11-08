@@ -29,6 +29,7 @@
   <div class="main">
     <div id="map" role="region" data-i18n-aria="mapAria" aria-label="地震分布地图"></div>
     <aside>
+      <!-- Two-column form: labels on the left, controls on the right. Rows use display:contents. -->
       <div class="controls">
         <div class="row"><span class="lbl" data-i18n="source">数据源</span>
           <div class="seg" id="source">
@@ -56,34 +57,47 @@
             <button type="button" data-v="5" aria-pressed="false">M5+</button>
             <button type="button" data-v="6" aria-pressed="false">M6+</button>
           </div></div>
-        <div class="row"><span class="lbl" data-i18n="view">地图视角</span>
-          <div class="seg" id="view">
-            <button type="button" data-v="jp" data-i18n="vJp">全国</button>
-            <button type="button" data-v="tokai" data-i18n="vTokai">东海・南海</button>
-            <button type="button" data-v="home" data-i18n="vHome">我的位置周边</button>
-          </div></div>
-        <div class="row"><span class="lbl" data-i18n="home">我的位置</span>
-          <div class="seg">
-            <span id="home-name" class="home-current"></span>
-            <button type="button" id="locate-home" data-i18n="locate">使用当前位置</button>
-            <button type="button" id="pick-home" aria-pressed="false">在地图上选择</button>
-            <button type="button" id="reset-home" data-i18n="clear">清除</button>
-          </div></div>
-        <div class="row"><span class="lbl" data-i18n="basemap">底图</span>
-          <div class="seg" id="basemap">
-            <button type="button" data-v="pale" aria-pressed="true" data-i18n="bmPale">淡色</button>
-            <button type="button" data-v="std" aria-pressed="false" data-i18n="bmStd">标准</button>
-            <button type="button" data-v="photo" aria-pressed="false" data-i18n="bmPhoto">航拍</button>
-            <button type="button" data-v="relief" aria-pressed="false" data-i18n="bmRelief">地形</button>
-          </div></div>
-        <div class="row"><span class="lbl" data-i18n="layers">地图图层</span>
-          <div class="layers">
-            <label class="check"><input type="checkbox" id="nankai" checked> <span data-i18n="layerNankai">南海海槽设想震源区（示意）</span></label>
-            <label class="check"><input type="checkbox" id="segments"> <span data-i18n="layerSegments">南海海槽分区（历史破裂）</span></label>
-            <label class="check"><input type="checkbox" id="plates"> <span data-i18n="layerPlates">板块边界</span></label>
-            <label class="check"><input type="checkbox" id="historic"> <span data-i18n="layerHistoric">历史大地震</span></label>
-            <label class="check"><input type="checkbox" id="heat"> <span data-i18n="layerHeat">地震密度热力图</span></label>
-          </div></div>
+
+        <button type="button" id="map-toggle" class="section-toggle" aria-expanded="true" aria-controls="map-settings">
+          <span class="chev" aria-hidden="true"></span><span data-i18n="mapSettings">地图设置</span>
+          <span id="map-summary" class="section-note"></span>
+        </button>
+        <div id="map-settings" class="map-settings">
+          <div class="row"><span class="lbl" data-i18n="view">地图视角</span>
+            <div class="seg" id="view">
+              <button type="button" data-v="jp" data-i18n="vJp">全国</button>
+              <button type="button" data-v="tokai" data-i18n="vTokai">东海・南海</button>
+              <button type="button" data-v="home" data-i18n="vHome">我的位置周边</button>
+            </div></div>
+          <div class="row"><span class="lbl" data-i18n="basemap">底图</span>
+            <div class="seg" id="basemap">
+              <button type="button" data-v="pale" aria-pressed="true" data-i18n="bmPale">淡色</button>
+              <button type="button" data-v="std" aria-pressed="false" data-i18n="bmStd">标准</button>
+              <button type="button" data-v="photo" aria-pressed="false" data-i18n="bmPhoto">航拍</button>
+              <button type="button" data-v="relief" aria-pressed="false" data-i18n="bmRelief">地形</button>
+            </div></div>
+          <!-- The source area and its segments cover the same region, so only one is shown at a time. -->
+          <div class="row"><span class="lbl" data-i18n="nankaiLbl">南海海槽</span>
+            <div class="seg" id="nankai-mode">
+              <button type="button" data-v="off" aria-pressed="false" data-i18n="nkOff">关闭</button>
+              <button type="button" data-v="area" aria-pressed="true" data-i18n="nkArea">震源区</button>
+              <button type="button" data-v="segments" aria-pressed="false" data-i18n="nkSegments">历史分区</button>
+            </div></div>
+          <div class="row row-top"><span class="lbl" data-i18n="layers">图层</span>
+            <div class="layers">
+              <label class="check"><input type="checkbox" id="plates"> <span data-i18n="layerPlates">板块边界</span></label>
+              <label class="check"><input type="checkbox" id="historic"> <span data-i18n="layerHistoric">历史大地震</span></label>
+              <label class="check"><input type="checkbox" id="heat"> <span data-i18n="layerHeat">密度热力图</span></label>
+            </div></div>
+          <div class="row row-top">
+            <span class="lbl-stack"><span class="lbl" data-i18n="home">我的位置</span><span id="home-name" class="lbl-status"></span></span>
+            <div class="actions">
+              <button type="button" id="locate-home" data-i18n="locate">使用当前位置</button>
+              <button type="button" id="pick-home" aria-pressed="false">在地图上选择</button>
+              <button type="button" id="reset-home" data-i18n="clear">清除</button>
+            </div></div>
+          <div id="home-note" class="form-note" role="status" hidden></div>
+        </div>
       </div>
       <div id="overview" class="overview">
         <div class="stats">

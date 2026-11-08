@@ -10,15 +10,32 @@ export function setStatus(text, ok) {
 
 export function setHomeLabel(home) {
   $("home-name").textContent = t(home ? "homeSet" : "homeUnset");
+  $("home-note").hidden = true;
   $("reset-home").hidden = !home;
   const viewBtn = document.querySelector('#view button[data-v="home"]');
   viewBtn.disabled = !home;
   viewBtn.title = home ? "" : t("homeFirst");
 }
 
-/** Short notes next to the location controls, e.g. while asking the browser. */
+/** A line under the location controls, e.g. while asking the browser or after a refusal. */
 export function setHomeNote(text) {
-  $("home-name").textContent = text;
+  $("home-note").textContent = text;
+  $("home-note").hidden = !text;
+}
+
+const BASEMAP_KEY = { pale: "bmPale", std: "bmStd", photo: "bmPhoto", relief: "bmRelief" };
+const LAYER_IDS = ["plates", "historic", "heat"];
+
+/** Fold or unfold the map settings rows. */
+export function setMapSettingsOpen(open) {
+  $("map-settings").hidden = !open;
+  $("map-toggle").setAttribute("aria-expanded", String(open));
+}
+
+/** "Light · 2 layers" beside the map settings toggle, so a folded section still says what is on. */
+export function updateMapSummary(basemap, nankaiMode) {
+  const n = LAYER_IDS.filter((id) => $(id).checked).length + (nankaiMode === "off" ? 0 : 1);
+  $("map-summary").textContent = `${t(BASEMAP_KEY[basemap] || "bmPale")} · ${n ? t("layersOn", { n }) : t("layersNone")}`;
 }
 
 export function setPickButton(on) {

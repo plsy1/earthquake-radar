@@ -10,7 +10,7 @@ import {
 } from "./map.js";
 import {
   applySourceUi, bindSegment, pressSegment, renderDetail, renderList, renderStats, setHomeLabel,
-  setHomeNote, setPickButton, setStatus, showDetailView, tooltipHtml,
+  setHomeNote, setMapSettingsOpen, setPickButton, setStatus, showDetailView, tooltipHtml, updateMapSummary,
 } from "./ui.js";
 import { USGS_DAYS, fetchUsgs } from "./usgs.js";
 import { $, km, rank } from "./util.js";
@@ -34,6 +34,8 @@ const state = {
   minRank: 0,          // JMA: minimum intensity rank
   minMag: 2.5,         // USGS: minimum magnitude
   home: loadHome(),    // null until the viewer sets a location
+  basemap: "pale",
+  nankaiMode: "area",  // "off" | "area" | "segments"
   picking: false,
   selected: null,      // eid of the earthquake shown in the detail panel
 };
@@ -212,14 +214,33 @@ $("view").addEventListener("click", (ev) => {
   const b = ev.target.closest("button");
   if (b) flyToView(b.dataset.v, state.home);
 });
-$("nankai").addEventListener("change", (ev) => setNankaiVisible(ev.target.checked));
-bindSegment("basemap", setBasemap);
-$("segments").addEventListener("change", (ev) => setSegmentsVisible(ev.target.checked));
+bindSegment("basemap", (v) => { state.basemap = v; setBasemap(v); updateMapSummary(v, state.nankaiMode); });
+bindSegment("nankai-mode", (v) => {
+  state.nankaiMode = v;
+  setNankaiVisible(v === "area");
+  setSegmentsVisible(v === "segments");
+  updateMapSummary(state.basemap, v);
+});
+for (const id of ["plates", "historic", "heat"]) {
+  $(id).addEventListener("change", () => updateMapSummary(state.basemap, state.nankaiMode));
+}
+
+// Map settings start open on wide screens and folded on phones, then follow the viewer's choice.
+const MAP_OPEN_KEY = "quake-radar.mapOpen";
+let mapOpen = matchMedia("(min-width: 861px)").matches;
+try { const saved = localStorage.getItem(MAP_OPEN_KEY); if (saved !== null) mapOpen = saved === "1"; } catch (_) { /* default */ }
+setMapSettingsOpen(mapOpen);
+updateMapSummary(state.basemap, state.nankaiMode);
+$("map-toggle").addEventListener("click", () => {
+  mapOpen = !mapOpen;
+  setMapSettingsOpen(mapOpen);
+  try { localStorage.setItem(MAP_OPEN_KEY, mapOpen ? "1" : "0"); } catch (_) { /* not remembered */ }
+});
 // Layers that load data on first use untick themselves if loading fails.
 for (const [id, show] of [["plates", setPlatesVisible], ["historic", setHistoricVisible], ["heat", setHeatVisible]]) {
   $(id).addEventListener("change", async (ev) => {
     const ok = await show(ev.target.checked);
-    if (!ok) ev.target.checked = false;
+    if (!ok) { ev.target.checked = false; updateMapSummary(state.basemap, state.nankaiMode); }
   });
 }
 $("back").addEventListener("click", closeDetail);
@@ -254,6 +275,7 @@ $("lang").addEventListener("click", (ev) => {
 });
 onLangChange(() => {
   applySourceUi(state.source);
+  updateMapSummary(state.basemap, state.nankaiMode);
   setHomeLabel(state.home);
   setPickButton(state.picking);
   drawHome(state.home);
