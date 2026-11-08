@@ -5,7 +5,7 @@ import { applyStatic, fmtClock, onLangChange, setLang, t } from "./i18n.js";
 import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
   drawHome, drawQuakes, drawStations, enterDetail, exitDetail, flyToView,
-  initMap, onMapClick, refreshMapLanguage, setLegendSource, setNankaiVisible, setPickCursor,
+  initMap, onMapClick, refreshMapLanguage, setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible,
 } from "./map.js";
 import {
   applySourceUi, bindSegment, pressSegment, renderDetail, renderList, renderStats, setHomeLabel,
@@ -47,7 +47,8 @@ function visibleEvents() {
     const cut = Date.now() - USGS_DAYS[state.periodHours] * 86400e3;
     return events.filter((e) => e.time >= cut && (+e.mag || 0) >= state.minMag);
   }
-  const cut = state.periodHours === "all" ? 0 : Date.now() - +state.periodHours * 3600e3;
+  const hours = state.periodHours === "all" ? 30 * 24 : +state.periodHours;
+  const cut = Date.now() - hours * 3600e3;
   return events.filter((e) => e.time >= cut && rank(e.maxi) >= state.minRank);
 }
 
@@ -210,6 +211,10 @@ $("view").addEventListener("click", (ev) => {
   if (b) flyToView(b.dataset.v, state.home);
 });
 $("nankai").addEventListener("change", (ev) => setNankaiVisible(ev.target.checked));
+$("plates").addEventListener("change", async (ev) => {
+  const ok = await setPlatesVisible(ev.target.checked);
+  if (!ok) ev.target.checked = false;
+});
 $("back").addEventListener("click", closeDetail);
 document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeDetail(); });
 

@@ -39,7 +39,7 @@
           <div class="seg" id="period">
             <button type="button" data-v="24" aria-pressed="false" data-i18n="p24">24小时</button>
             <button type="button" data-v="168" aria-pressed="true" data-i18n="p168">7天</button>
-            <button type="button" data-v="all" aria-pressed="false" data-i18n="pAll">全部</button>
+            <button type="button" data-v="all" aria-pressed="false" data-i18n="pAll">30天</button>
             <button type="button" data-v="year" aria-pressed="false" data-i18n="pYear" hidden>1年</button>
           </div></div>
         <div class="row" id="row-minint"><span class="lbl" data-i18n="minInt">最大震度</span>
@@ -69,7 +69,11 @@
             <button type="button" id="pick-home" aria-pressed="false">在地图上选择</button>
             <button type="button" id="reset-home" data-i18n="clear">清除</button>
           </div></div>
-        <label class="check"><input type="checkbox" id="nankai" checked> <span data-i18n="nankai">显示南海海槽设想震源区（大致示意）</span></label>
+        <div class="row"><span class="lbl" data-i18n="layers">地图图层</span>
+          <div class="layers">
+            <label class="check"><input type="checkbox" id="nankai" checked> <span data-i18n="layerNankai">南海海槽设想震源区（示意）</span></label>
+            <label class="check"><input type="checkbox" id="plates"> <span data-i18n="layerPlates">板块边界</span></label>
+          </div></div>
       </div>
       <div id="overview" class="overview">
         <div class="stats">

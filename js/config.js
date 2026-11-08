@@ -41,5 +41,22 @@ export const VIEWS = {
   tokai: { bounds: [[31.0, 131.0], [36.3, 139.6]] },
 };
 
+// Plate boundary overlay (PB2002, clipped to Japan in data/plates.json) and its labels.
+export const PLATES_URL = "data/plates.json";
+export const PLATE_LABELS = [
+  { key: "plPA", lat: 36.5, lon: 151.0 },
+  { key: "plPS", lat: 26.5, lon: 134.5 },
+  { key: "plOK", lat: 47.5, lon: 146.0 },
+  { key: "plAM", lat: 41.5, lon: 129.5 },
+  { key: "plON", lat: 27.8, lon: 125.6 },
+];
+export const TRENCH_LABELS = [
+  { key: "trKuril", lat: 42.4, lon: 147.6 },
+  { key: "trJapan", lat: 38.3, lon: 144.6 },
+  { key: "trIzu", lat: 30.0, lon: 143.0 },
+  { key: "trNankai", lat: 32.3, lon: 135.6 },
+  { key: "trRyukyu", lat: 25.6, lon: 129.4 },
+];
+
 export const TILE_URL = "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png";
 export const TILE_ATTRIBUTION_URL = "https://maps.gsi.go.jp/development/ichiran.html";

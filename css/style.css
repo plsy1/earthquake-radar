@@ -107,3 +107,11 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .status #status{white-space:nowrap}
 .status .lang{margin-left:4px;flex-wrap:nowrap}
 .status .lang button{font-family:var(--f-body);font-size:12px;padding:2px 8px}
+
+/* ---- plate boundaries ---- */
+.layers{display:flex;gap:6px 14px;flex-wrap:wrap;justify-content:flex-end}
+.plate-label,.trench-label{white-space:nowrap;pointer-events:none;text-shadow:0 0 3px var(--panel),0 0 3px var(--panel),0 0 3px var(--panel)}
+.plate-label{font:600 13px/1 var(--f-body);color:var(--ink);opacity:.75;letter-spacing:.06em}
+.trench-label{font:italic 11px/1 var(--f-body);color:#9a3a22}
+@media (prefers-color-scheme:dark){.trench-label{color:#ff9a7a}}
+.legend .key{margin-top:6px;color:var(--muted);max-width:280px}

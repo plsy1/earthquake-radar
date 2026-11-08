@@ -1,5 +1,8 @@
 // Leaflet map: base tiles, Nankai outline, home marker, earthquake circles.
-import { COLOR, DARKTEXT, DEPTH_BANDS, NEAR_KM, ORDER, TILE_ATTRIBUTION_URL, TILE_URL, UNKNOWN_COLOR, VIEWS, depthBand } from "./config.js";
+import {
+  COLOR, DARKTEXT, DEPTH_BANDS, NEAR_KM, ORDER, PLATE_LABELS, PLATES_URL, TILE_ATTRIBUTION_URL, TILE_URL,
+  TRENCH_LABELS, UNKNOWN_COLOR, VIEWS, depthBand,
+} from "./config.js";
 import { intLabel, pick, placeName, t } from "./i18n.js";
 import { NANKAI } from "./nankai.js";
 import { esc, rank } from "./util.js";
@@ -8,13 +11,15 @@ const L = window.L;
 let map, nankaiLayer, homeLayer, quakeLayer, detailLayer;
 let userMoved = false; // once true, resizes no longer refit the whole country
 let legendEl, legendSource = "jma", attribution = "";
+let platesLines = null, platesLabels = null, platesOn = false;
 
 const attributionHtml = () => `<a href="${TILE_ATTRIBUTION_URL}" target="_blank" rel="noopener">${t("attribution")}</a>`;
 const swatch = (bg, dark, text, wide) =>
   `<i style="background:${bg};color:${dark ? "#1a1a1a" : "#fff"}${wide ? ";width:auto;padding:0 6px" : ""}">${text}</i>`;
-const legendHtml = () => legendSource === "usgs"
+const legendHtml = () => (legendSource === "usgs"
   ? esc(t("legendDepth")) + '<div class="scale">' + DEPTH_BANDS.map((b) => swatch(b.color, b.dark, b.label, true)).join("") + "</div>"
-  : esc(t("legend")) + '<div class="scale">' + ORDER.map((k) => swatch(COLOR[k], DARKTEXT.has(k), intLabel(k))).join("") + "</div>";
+  : esc(t("legend")) + '<div class="scale">' + ORDER.map((k) => swatch(COLOR[k], DARKTEXT.has(k), intLabel(k))).join("") + "</div>")
+  + (platesOn ? `<div class="key">${esc(t("platesKey"))}</div>` : "");
 
 /** Circle color: JMA events by max intensity, USGS events by depth. */
 export const quakeColor = (e) => (e.source === "usgs" ? depthBand(e.loc.depth).color : COLOR[e.maxi] || UNKNOWN_COLOR);
@@ -28,6 +33,9 @@ export function initMap(el) {
   nankaiLayer = L.polygon(NANKAI, {
     color: "#c8322b", weight: 1.5, dashArray: "6 5", fillColor: "#c8322b", fillOpacity: 0.07, interactive: false,
   }).addTo(map);
+  // Plate lines and labels sit under the earthquake circles.
+  map.createPane("plates").style.zIndex = 350;
+  map.createPane("plateLabels").style.zIndex = 390;
   homeLayer = L.layerGroup().addTo(map);
   quakeLayer = L.layerGroup().addTo(map);
   detailLayer = L.layerGroup();
@@ -57,9 +65,57 @@ export function setLegendSource(source) {
   if (legendEl) legendEl.innerHTML = legendHtml();
 }
 
-/** Re-label the legend and attribution after a language change. */
+// ---- plate boundaries (loaded on first use) ----
+
+function buildPlateLabels() {
+  const g = L.layerGroup();
+  const add = (list, cls) => {
+    for (const p of list) {
+      L.marker([p.lat, p.lon], {
+        pane: "plateLabels", interactive: false, keyboard: false,
+        icon: L.divIcon({ className: cls, html: esc(t(p.key)), iconSize: null, iconAnchor: [0, 0] }),
+      }).addTo(g);
+    }
+  };
+  add(PLATE_LABELS, "plate-label");
+  add(TRENCH_LABELS, "trench-label");
+  return g;
+}
+
+/** Show or hide plate boundaries; resolves false if the data could not be loaded. */
+export async function setPlatesVisible(on) {
+  platesOn = on;
+  if (on && !platesLines) {
+    try {
+      const res = await fetch(PLATES_URL);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      platesLines = L.geoJSON(data, {
+        pane: "plates", interactive: false,
+        style: (f) => (f.properties.type === "subduction"
+          ? { color: "#b5452a", weight: 2.6, opacity: 0.9 }
+          : { color: "#8a5a44", weight: 1.4, opacity: 0.8, dashArray: "5 5" }),
+      });
+    } catch (err) {
+      platesOn = false;
+      return false;
+    }
+  }
+  if (!platesLabels) platesLabels = buildPlateLabels();
+  if (platesOn) { platesLines.addTo(map); platesLabels.addTo(map); }
+  else if (platesLines) { map.removeLayer(platesLines); map.removeLayer(platesLabels); }
+  if (legendEl) legendEl.innerHTML = legendHtml();
+  return true;
+}
+
+/** Re-label the legend, plate names and attribution after a language change. */
 export function refreshMapLanguage() {
   if (legendEl) legendEl.innerHTML = legendHtml();
+  if (platesLabels) {
+    map.removeLayer(platesLabels);
+    platesLabels = buildPlateLabels();
+    if (platesOn) platesLabels.addTo(map);
+  }
   map.attributionControl.removeAttribution(attribution);
   attribution = attributionHtml();
   map.attributionControl.addAttribution(attribution);
