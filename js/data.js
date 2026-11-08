@@ -1,5 +1,5 @@
 // Reads JMA's earthquake list and turns it into one record per earthquake.
-import { DETAIL_BASE, SRC } from "./config.js";
+import { DETAIL_BASE, LP_BASE, LP_LIST, SRC } from "./config.js";
 import { rank } from "./util.js";
 
 /** "+34.9+137.7-40000/" -> {lat, lon, depth(km)}; null for other formats. */
@@ -42,9 +42,62 @@ export function toEvents(reports) {
 }
 
 export async function fetchEvents() {
-  const res = await fetch(SRC + "?t=" + Date.now(), { cache: "no-store" });
+  const [res, lp] = await Promise.all([
+    fetch(SRC + "?t=" + Date.now(), { cache: "no-store" }),
+    fetchLongPeriodList().catch(() => new Map()), // optional: the list still works without it
+  ]);
   if (!res.ok) throw new Error("HTTP " + res.status);
-  return toEvents(await res.json());
+  const events = toEvents(await res.json());
+  for (const e of events) {
+    const l = lp.get(e.eid);
+    if (l) { e.lg = l.maxl; e.lgFile = l.file; }
+  }
+  return events;
+}
+
+/**
+ * Long-period ground motion list: event id -> highest class and report file.
+ * JMA lists only earthquakes that reached class 1 or more; the newest report wins.
+ */
+async function fetchLongPeriodList() {
+  const res = await fetch(LP_LIST + "?t=" + Date.now(), { cache: "no-store" });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const byId = new Map();
+  for (const r of await res.json()) {
+    if (r && r.eid && r.maxl && !byId.has(r.eid)) byId.set(r.eid, { maxl: String(r.maxl), file: r.json });
+  }
+  return byId;
+}
+
+const lpCache = new Map();
+
+/** Stations that reached long-period class 1+, with their Sva (cm/s) and intensity. */
+export function fetchLongPeriodDetail(file) {
+  if (!lpCache.has(file)) {
+    const p = fetch(LP_BASE + file, { cache: "no-store" })
+      .then((res) => { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+      .then((d) => {
+        const obs = d?.Body?.Intensity?.Observation;
+        const stations = [];
+        for (const pref of obs?.Pref || []) {
+          for (const area of pref.Area || []) {
+            for (const st of area.IntensityStation || []) {
+              if (!st.latlon || !st.LgInt) continue;
+              stations.push({
+                name: st.Name, nameEn: st.enName || "", pref: pref.Name, prefEn: pref.enName || "",
+                lg: String(st.LgInt), int: st.Int || "", sva: st.Sva ? +st.Sva : null,
+                lat: +st.latlon.lat, lon: +st.latlon.lon,
+              });
+            }
+          }
+        }
+        stations.sort((a, b) => b.lg.localeCompare(a.lg) || (b.sva || 0) - (a.sva || 0));
+        return { maxLg: String(obs?.MaxLgInt || ""), stations };
+      });
+    p.catch(() => lpCache.delete(file));
+    lpCache.set(file, p);
+  }
+  return lpCache.get(file);
 }
 
 /** Station readings, city summary and comments (Japanese and English) from one detail report. */

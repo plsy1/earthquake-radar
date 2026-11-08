@@ -3,6 +3,12 @@
 export const SRC = "https://www.jma.go.jp/bosai/quake/data/list.json";
 // Each report in the list names a detail file under this folder.
 export const DETAIL_BASE = "https://www.jma.go.jp/bosai/quake/data/";
+// Long-period ground motion reports (only quakes with class 1 or more appear).
+export const LP_LIST = "https://www.jma.go.jp/bosai/ltpgm/data/list.json";
+export const LP_BASE = "https://www.jma.go.jp/bosai/ltpgm/data/";
+export const LP_PAGE = "https://www.data.jma.go.jp/eew/data/ltpgm/event.php?eventId=";
+// Colors for long-period classes 1–4.
+export const LP_COLOR = { "1": "#3aa6b9", "2": "#f2b134", "3": "#e8590c", "4": "#a61e4d" };
 export const REFRESH_MS = 60_000;
 
 // USGS catalog (FDSN event service), limited to the area around Japan.

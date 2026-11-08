@@ -1,6 +1,6 @@
 // Leaflet map: base tiles, Nankai outline, home marker, earthquake circles.
 import {
-  COLOR, DARKTEXT, DEPTH_BANDS, HEAT_SCRIPT, HISTORIC_URL, NEAR_KM, ORDER, PLATE_LABELS, PLATES_URL,
+  COLOR, DARKTEXT, DEPTH_BANDS, LP_COLOR, HEAT_SCRIPT, HISTORIC_URL, NEAR_KM, ORDER, PLATE_LABELS, PLATES_URL,
   TILE_ATTRIBUTION_URL, TRENCH_LABELS, UNKNOWN_COLOR, VIEWS, depthBand,
 } from "./config.js";
 import { initBasemap } from "./basemap.js";
@@ -17,6 +17,7 @@ let segmentsLayer = null, segmentsOn = false;
 let historicData = null, historicLayer = null, historicOn = false;
 let heatLayer = null, heatOn = false, heatPoints = [];
 let afterLayer = null, afterRenderer = null;   // aftershocks of the selected earthquake
+let lpLayer = null;                             // long-period ground motion stations
 let profileLayer = null, profileBtn = null;     // depth profile line and its map button
 
 const attributionHtml = () => `<a href="${TILE_ATTRIBUTION_URL}" target="_blank" rel="noopener">${t("attribution")}</a>`;
@@ -48,6 +49,7 @@ export function initMap(el, { basemap, features }) {
   map.createPane("aftershocks").style.zIndex = 450;
   afterRenderer = L.canvas({ pane: "aftershocks" });
   afterLayer = L.layerGroup();
+  lpLayer = L.layerGroup();
   profileLayer = L.layerGroup().addTo(map);
   // Segment names stay readable above the earthquake circles; they ignore the pointer.
   map.createPane("topLabels").style.zIndex = 610;
@@ -311,6 +313,8 @@ export function enterDetail(e) {
   detailLayer.addTo(map);
   afterLayer.clearLayers();
   afterLayer.addTo(map);
+  lpLayer.clearLayers();
+  lpLayer.addTo(map);
   addEpicenter(e);
   map.flyTo([e.loc.lat, e.loc.lon], Math.max(map.getZoom(), 7), { duration: 0.8 });
 }
@@ -340,7 +344,20 @@ export function exitDetail() {
   detailLayer.clearLayers();
   map.removeLayer(afterLayer);
   afterLayer.clearLayers();
+  map.removeLayer(lpLayer);
+  lpLayer.clearLayers();
   quakeLayer.addTo(map);
+}
+
+/** Stations that reached long-period class 1+, as numbered squares above the intensity dots. */
+export function drawLongPeriod(stations, labelFor) {
+  lpLayer.clearLayers();
+  for (const s of stations) {
+    L.marker([s.lat, s.lon], {
+      pane: "historic", keyboard: false,
+      icon: L.divIcon({ className: "", html: `<span class="lp-mark" style="background:${LP_COLOR[s.lg] || "#666"}">${esc(s.lg)}</span>`, iconSize: [18, 18], iconAnchor: [9, 9] }),
+    }).bindTooltip(esc(labelFor(s)), { direction: "top" }).addTo(lpLayer);
+  }
 }
 
 /** Aftershocks of the selected earthquake as hollow rings, inside a dashed search circle. */

@@ -2,16 +2,16 @@
 import { PROFILE_PRESETS, depthProfile, findAftershocks, profileBand } from "./analysis.js";
 import { REFRESH_MS, USGS_YEAR_REFRESH_MS } from "./config.js";
 import { FEATURE_GROUPS, setBasemap, setFeatureVisible } from "./basemap.js";
-import { fetchDetail, fetchEvents } from "./data.js";
+import { fetchDetail, fetchEvents, fetchLongPeriodDetail } from "./data.js";
 import { applyStatic, fmtClock, onLangChange, setLang, t } from "./i18n.js";
 import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
-  clearProfile, drawAftershocks, drawHome, drawProfile, drawQuakes, drawStations, enterDetail, exitDetail,
+  clearProfile, drawAftershocks, drawHome, drawLongPeriod, drawProfile, drawQuakes, drawStations, enterDetail, exitDetail,
   fitProfile, flyToView, initMap, onMapClick, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
   setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible, setProfileHandler, setSegmentsVisible,
 } from "./map.js";
 import {
-  applySourceUi, bindSegment, pressSegment, renderDetail, renderList, renderProfile, renderStats, setHomeLabel,
+  applySourceUi, bindSegment, lpStationLine, pressSegment, renderDetail, renderList, renderProfile, renderStats, setHomeLabel,
   setHomeNote, setMapSettingsOpen, setPickButton, setStatus, showDetailView, showPanel, tooltipHtml, updateMapSummary,
 } from "./ui.js";
 import { USGS_DAYS, fetchUsgs } from "./usgs.js";
@@ -77,6 +77,33 @@ function aftershocksFor(e) {
   return info;
 }
 
+/**
+ * Everything the open detail panel shows. The JMA intensity report and the
+ * long-period report load separately; each repaints the panel when it arrives.
+ */
+let detailCtx = null;
+
+function paintDetail(ctx) {
+  if (state.selected !== ctx.e.eid) return;
+  renderDetail(ctx.e, {
+    home: state.home, detail: ctx.detail, messageKey: ctx.messageKey,
+    aftershocks: ctx.aftershocks, longPeriod: ctx.lp,
+  });
+}
+
+function loadLongPeriod(ctx) {
+  ctx.lp = { loading: true };
+  fetchLongPeriodDetail(ctx.e.lgFile).then(
+    (data) => {
+      if (state.selected !== ctx.e.eid) return;
+      ctx.lp = { data };
+      drawLongPeriod(data.stations, lpStationLine);
+      paintDetail(ctx);
+    },
+    () => { ctx.lp = { failed: true }; paintDetail(ctx); },
+  );
+}
+
 async function openDetail(e) {
   // While a point is being picked on the map, clicks on circles belong to the picking.
   if (state.picking || state.profile.picking) return;
@@ -84,46 +111,36 @@ async function openDetail(e) {
   state.selected = e.eid;
   showDetailView(true);
   enterDetail(e);
-  const aftershocks = aftershocksFor(e);
-  if (e.source === "usgs") {
-    renderDetail(e, { home: state.home, aftershocks });
-    return;
-  }
-  if (!e.detail) {
-    renderDetail(e, { home: state.home, messageKey: "noDetail", aftershocks });
-    return;
-  }
-  renderDetail(e, { home: state.home, aftershocks });
+  const ctx = detailCtx = { e, detail: null, messageKey: undefined, aftershocks: aftershocksFor(e), lp: null };
+  if (e.source !== "usgs" && !e.detail) ctx.messageKey = "noDetail";
+  if (e.lgFile) loadLongPeriod(ctx);
+  paintDetail(ctx);
+  if (e.source === "usgs" || !e.detail) return;
   try {
     const detail = await fetchDetail(e.detail);
     if (state.selected !== e.eid) return; // the viewer moved on while it loaded
+    ctx.detail = detail;
     drawStations(e, detail.stations);
-    renderDetail(e, { home: state.home, detail, aftershocks });
   } catch (err) {
-    if (state.selected === e.eid) renderDetail(e, { home: state.home, messageKey: "detailFailed", aftershocks });
+    ctx.messageKey = "detailFailed";
   }
+  paintDetail(ctx);
 }
 
 /**
- * Redraw an open detail panel after new data, a location or a language change.
- * JMA reports are cached; stations are redrawn (and the map refit) only when asked.
+ * Repaint the open detail panel after new data, a location or a language change.
+ * Stations are redrawn (and the map refit) only when asked, e.g. for new labels.
  */
 function refreshDetail({ stations = false } = {}) {
   const sel = cur().events.find((e) => e.eid === state.selected);
-  if (!sel) return;
-  const aftershocks = aftershocksFor(sel);
-  if (sel.source === "usgs" || !sel.detail) {
-    renderDetail(sel, { home: state.home, aftershocks, messageKey: sel.source === "usgs" ? undefined : "noDetail" });
-    return;
-  }
-  fetchDetail(sel.detail).then(
-    (detail) => {
-      if (state.selected !== sel.eid) return;
-      if (stations) drawStations(sel, detail.stations);
-      renderDetail(sel, { home: state.home, detail, aftershocks });
-    },
-    () => {},
-  );
+  if (!sel || !detailCtx || detailCtx.e.eid !== sel.eid) return;
+  const ctx = detailCtx;
+  ctx.e = sel; // the list was reloaded: newer magnitude, intensity or long-period class
+  ctx.aftershocks = aftershocksFor(sel);
+  if (stations && ctx.detail) drawStations(sel, ctx.detail.stations);
+  if (stations && ctx.lp?.data) drawLongPeriod(ctx.lp.data.stations, lpStationLine);
+  if (sel.lgFile && !ctx.lp) loadLongPeriod(ctx); // a long-period report appeared later
+  paintDetail(ctx);
 }
 
 // ---- depth profile ----
@@ -178,6 +195,7 @@ function closeProfile() {
 function closeDetail() {
   if (!state.selected) return;
   state.selected = null;
+  detailCtx = null;
   exitDetail();
   showDetailView(false);
 }
@@ -226,7 +244,7 @@ async function load() {
     f.seen = new Set(next.map((e) => e.eid));
     f.query = query;
     // Re-render only when something changed, so hovering and reading aren't interrupted.
-    const sig = next.map((e) => e.eid + e.maxi + e.mag).join("|");
+    const sig = next.map((e) => e.eid + e.maxi + e.mag + (e.lg || "")).join("|");
     const changed = sig !== f.sig;
     f.sig = sig;
     f.events = next;

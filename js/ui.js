@@ -1,5 +1,5 @@
 // Side panel: status line, controls, summary numbers, earthquake list, detail.
-import { COLOR, DARKTEXT, NEAR_KM, NEARBY_STATION_KM, ORDER, UNKNOWN_COLOR, depthBand } from "./config.js";
+import { COLOR, DARKTEXT, LP_COLOR, LP_PAGE, NEAR_KM, NEARBY_STATION_KM, ORDER, UNKNOWN_COLOR, depthBand } from "./config.js";
 import { ago, depthText, fmtTime, intLabel, magText, pick, placeName, t } from "./i18n.js";
 import { mtChart, profileChart } from "./charts.js";
 import { $, esc, km, rank } from "./util.js";
@@ -81,7 +81,7 @@ export function tooltipHtml(e) {
   return t("tooltip", {
     place: esc(placeName(e)), mag: magText(e.mag), int: intLabel(e.maxi),
     time: fmtTime(e.time), ago: ago(e.time),
-  });
+  }) + (e.lg ? ` · ${esc(t("lpBadge", { v: e.lg }))}` : "");
 }
 
 /** Show one of the side panel's views: the list, one earthquake's detail, or the depth profile. */
@@ -185,7 +185,44 @@ const roundKm = (d) => (d < 10 ? d.toFixed(1) : Math.round(d));
  * Detail panel for one earthquake. `detail` is the parsed JMA report, or absent
  * while loading; `messageKey` replaces the intensity section (loading or error).
  */
-export function renderDetail(e, { home, detail, messageKey, aftershocks }) {
+/** One line per long-period station: name, class, Sva and intensity. */
+export const lpStationLine = (s) =>
+  t("lpStation", { name: pick(s.name, s.nameEn), l: s.lg, sva: s.sva ?? "–", int: intLabel(s.int) });
+
+/** Long-period ground motion block: highest class, what it means, and the stations. */
+function renderLongPeriod(body, e, lp) {
+  if (!lp) return;
+  const box = el("section", "note lp");
+  box.appendChild(el("span", "lbl", t("lpTitle")));
+  if (lp.loading || lp.failed) {
+    box.appendChild(el("div", null, t(lp.failed ? "lpFailed" : "lpLoading")));
+    body.appendChild(box);
+    return;
+  }
+  const { maxLg, stations } = lp.data;
+  const level = maxLg || e.lg;
+  const head = el("div", "lp-head");
+  const chip = el("span", "lp-chip", t("lpClass", { v: level }));
+  chip.style.background = LP_COLOR[level] || "#666";
+  head.append(chip, el("b", null, t("lpShort" + level)));
+  box.append(head, el("div", null, t("lpDesc" + level)));
+  if (stations.length) {
+    box.appendChild(el("div", "lp-sub", t("lpStations", { n: stations.length })));
+    const ul = el("ul", "lp-stations");
+    for (const s of stations.slice(0, 12)) ul.appendChild(el("li", null, lpStationLine(s)));
+    box.appendChild(ul);
+  }
+  const a = el("a", null, t("lpLink") + " ↗");
+  a.href = LP_PAGE + e.eid;
+  a.target = "_blank";
+  a.rel = "noopener";
+  const p = el("div", "lp-link");
+  p.appendChild(a);
+  box.append(p, el("div", "chart-cap", t("lpNote")));
+  body.appendChild(box);
+}
+
+export function renderDetail(e, { home, detail, messageKey, aftershocks, longPeriod }) {
   const body = $("detail-body");
   body.textContent = "";
 
@@ -203,6 +240,7 @@ export function renderDetail(e, { home, detail, messageKey, aftershocks }) {
   body.appendChild(top);
 
   if (e.source === "usgs") { renderAftershocks(body, e, aftershocks); renderUsgsNotes(body, e); return; }
+  renderLongPeriod(body, e, longPeriod);
 
   if (!detail) {
     body.appendChild(el("div", "empty", t(messageKey || "loadingDetail")));
@@ -355,7 +393,15 @@ function listItem(e, home, isFresh, onSelect) {
   const mid = el("div");
   mid.style.minWidth = "0";
   const meta = `${fmtTime(e.time)} · ${ago(e.time)}` + (home ? t("listDist", { d: Math.round(e.dist) }) : "");
-  mid.append(el("div", "place", placeName(e)), el("div", "meta", meta));
+  const placeRow = el("div", "place-row");
+  placeRow.appendChild(el("div", "place", placeName(e)));
+  if (e.lg) {
+    const badge = el("span", "lp-badge", t("lpBadge", { v: e.lg }));
+    badge.style.background = LP_COLOR[e.lg] || "#666";
+    badge.title = t("lpTitle");
+    placeRow.appendChild(badge);
+  }
+  mid.append(placeRow, el("div", "meta", meta));
 
   const mag = el("div", "mag", magText(e.mag));
   mag.appendChild(el("small", null, depthText(e.loc.depth)));

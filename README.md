@@ -10,6 +10,8 @@
 - 点击列表或地图上的地震，可以看这次地震的详情：各观测点的震度分布图、按震度分组的市区町村、
   海啸说明，以及离"我的位置"最近的观测点测到的震度
 - 可以切换到 **USGS** 数据：包括无感地震和海上地震，可以看最近 1 年，按最小震级筛选，颜色表示震源深度
+- **长周期地震动**：气象厅发布了长周期地震动阶级（1～4）的地震，在列表里带"长周期N"标记；
+  详情里显示阶级的含义、测到阶级1以上的观测点和 Sva，地图上用编号方块标出这些观测点
 - **余震分析**：地震详情里统计震中附近、主震之后的地震次数和最大余震，画出震级-时间图（M-T 图），
   地图上用空心圆标出余震
 - **深度剖面图**：地图左上角的"剖面"按钮。选预设（日本海沟、千岛海沟、南海海槽、伊豆・小笠原海沟）
@@ -65,6 +67,7 @@ Build command 留空，Build output directory 填 `/`。推送到 `main` 会自�
 
 ## 数据来源
 
+- 长周期地震动：[气象厅 長周期地震動に関する観測情報](https://www.data.jma.go.jp/eew/data/ltpgm/)（`bosai/ltpgm/data/list.json` 及各次报告）
 - 地震数据：[气象厅 防災情報 JSON](https://www.jma.go.jp/bosai/quake/data/list.json)，各地震度来自同目录下每次地震的详细报告（[地震情報](https://www.jma.go.jp/bosai/map.html#contents=earthquake_map)）
 - USGS 地震目录：[FDSN Event Web Service](https://earthquake.usgs.gov/fdsnws/event/1/)，日本周边大约 M4 以上较完整
 - 底图：[国土地理院 最適化ベクトルタイル](https://github.com/gsi-cyberjapan/optimal_bvmap)（标准地图风格，淡色版由页面调色生成）、
