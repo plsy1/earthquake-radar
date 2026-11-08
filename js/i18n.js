@@ -195,7 +195,7 @@ const STRINGS = {
     title: "Earthquake Radar",
     basemap: "Base map", bmPale: "Light", bmStd: "Standard", bmPhoto: "Aerial", bmRelief: "Terrain",
     layerSegments: "Nankai segments", layerHistoric: "Historic quakes", layerHeat: "Density heatmap",
-    mapSettings: "Map settings", nankaiLbl: "Nankai", nkOff: "Off", nkArea: "Source area", nkSegments: "Segments", layersOn: "{n} layers", layersNone: "no layers",
+    mapSettings: "Map settings", nankaiLbl: "Nankai", nkOff: "Off", nkArea: "Source area", nkSegments: "Segments", layersOn: "{n} layers", layerOne: "1 layer", layersNone: "no layers",
     segNankai: "Nankai\n1707 · 1854 · 1946", segTonankai: "Tonankai\n1707 · 1854 · 1944", segTokai: "Tokai\n1707 · 1854 (none since)",
     histInt: "max intensity {v}", toll: "About {n} dead or missing", tollPlus: "More than {n} deaths (incl. disaster-related)",
     histApprox: "Epicenters, magnitudes and tolls are approximate",

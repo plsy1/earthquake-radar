@@ -35,7 +35,7 @@ export function setMapSettingsOpen(open) {
 /** "Light · 2 layers" beside the map settings toggle, so a folded section still says what is on. */
 export function updateMapSummary(basemap, nankaiMode) {
   const n = LAYER_IDS.filter((id) => $(id).checked).length + (nankaiMode === "off" ? 0 : 1);
-  $("map-summary").textContent = `${t(BASEMAP_KEY[basemap] || "bmPale")} · ${n ? t("layersOn", { n }) : t("layersNone")}`;
+  $("map-summary").textContent = `${t(BASEMAP_KEY[basemap] || "bmPale")} · ${!n ? t("layersNone") : n === 1 ? t("layerOne") : t("layersOn", { n })}`;
 }
 
 export function setPickButton(on) {
