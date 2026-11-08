@@ -10,6 +10,9 @@ import { NANKAI, NANKAI_SEGMENTS, clipLon } from "./nankai.js";
 import { esc, rank } from "./util.js";
 
 const L = window.L;
+
+/** Animated moves divide by the map size; skip them while the map has no size (hidden page). */
+const hasSize = () => { const z = map.getSize(); return z.x > 0 && z.y > 0; };
 let map, nankaiLayer, homeLayer, quakeLayer, detailLayer;
 let userMoved = false; // once true, resizes no longer refit the whole country
 let legendEl, legendSource = "jma", attribution = "";
@@ -86,8 +89,10 @@ export function initMap(el, { basemap, features }) {
   }
   new ResizeObserver(() => {
     map.invalidateSize();
-    if (!userMoved && map.getSize().y > 50) map.fitBounds(VIEWS.jp.bounds);
+    if (!userMoved && map.getSize().y > 50) presetMove(() => map.fitBounds(VIEWS.jp.bounds));
   }).observe(el);
+  // Any move that isn't one of the preset views means no preset is current any more.
+  map.on("movestart", () => { if (!movingToPreset && onViewChange) onViewChange(null); });
 
   const legend = L.control({ position: "bottomleft" });
   legend.onAdd = () => {
@@ -337,7 +342,7 @@ export function enterDetail(e) {
   lpLayer.clearLayers();
   lpLayer.addTo(map);
   addEpicenter(e);
-  map.flyTo([e.loc.lat, e.loc.lon], Math.max(map.getZoom(), 7), { duration: 0.8 });
+  if (hasSize()) map.flyTo([e.loc.lat, e.loc.lon], Math.max(map.getZoom(), 7), { duration: 0.8 });
 }
 
 /** Plot station readings, weakest first so strong ones sit on top, and frame the shaking. */
@@ -357,7 +362,7 @@ export function drawStations(e, stations) {
   const strong = stations.filter((s) => rank(s.int) >= 2);
   const pts = (strong.length >= 3 ? strong : stations).map((s) => [s.lat, s.lon]);
   pts.push([e.loc.lat, e.loc.lon]);
-  if (pts.length > 1) map.flyToBounds(L.latLngBounds(pts).pad(0.15), { duration: 0.8, maxZoom: 10 });
+  if (pts.length > 1 && hasSize()) map.flyToBounds(L.latLngBounds(pts).pad(0.15), { duration: 0.8, maxZoom: 10 });
 }
 
 export function exitDetail() {
@@ -527,7 +532,7 @@ export function clearProfile() { profileLayer.clearLayers(); }
 
 export function fitProfile(band) {
   userMoved = true;
-  map.flyToBounds(L.latLngBounds(band).pad(0.1), { duration: 0.8 });
+  if (hasSize()) map.flyToBounds(L.latLngBounds(band).pad(0.1), { duration: 0.8 });
 }
 
 function addEpicenter(e) {
@@ -537,10 +542,23 @@ function addEpicenter(e) {
   }).addTo(detailLayer);
 }
 
+// ---- preset views (Japan, Tokai–Nankai, around my location) ----
+
+let movingToPreset = false, onViewChange = null;
+export const setViewChangeHandler = (fn) => { onViewChange = fn; };
+
+/** Run a move that lands on a preset view without reporting it as "moved away". */
+function presetMove(fn) {
+  movingToPreset = true;
+  fn();
+  setTimeout(() => { movingToPreset = false; }, 1200); // flights take 0.8 s
+}
+
 export function flyToView(key, home) {
+  if (!hasSize()) return;
   userMoved = true;
-  if (key === "home") { if (home) map.flyTo([home.lat, home.lon], 8, { duration: 0.8 }); }
-  else if (VIEWS[key]) map.flyToBounds(VIEWS[key].bounds, { duration: 0.8 });
+  if (key === "home") { if (home) presetMove(() => map.flyTo([home.lat, home.lon], 8, { duration: 0.8 })); }
+  else if (VIEWS[key]) presetMove(() => map.flyToBounds(VIEWS[key].bounds, { duration: 0.8 }));
 }
 
 export function setPickCursor(on) {

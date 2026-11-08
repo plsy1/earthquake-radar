@@ -99,9 +99,9 @@
         <div id="map-settings" class="map-settings">
           <div class="row"><span class="lbl" data-i18n="view">地图视角</span>
             <div class="seg" id="view">
-              <button type="button" data-v="jp" data-i18n="vJp">全国</button>
-              <button type="button" data-v="tokai" data-i18n="vTokai">东海・南海</button>
-              <button type="button" data-v="home" data-i18n="vHome">我的位置周边</button>
+              <button type="button" data-v="jp" aria-pressed="true" data-i18n="vJp">全国</button>
+              <button type="button" data-v="tokai" aria-pressed="false" data-i18n="vTokai">东海・南海</button>
+              <button type="button" data-v="home" aria-pressed="false" data-i18n="vHome">我的位置周边</button>
             </div></div>
           <div class="row"><span class="lbl" data-i18n="basemap">底图</span>
             <div class="seg" id="basemap">
@@ -147,7 +147,7 @@
           <div class="row row-top">
             <span class="lbl-stack"><span class="lbl" data-i18n="home">我的位置</span><span id="home-name" class="lbl-status"></span></span>
             <div class="actions">
-              <button type="button" id="locate-home" data-i18n="locate">使用当前位置</button>
+              <button type="button" id="locate-home" aria-pressed="false" data-i18n="locate">使用当前位置</button>
               <button type="button" id="pick-home" aria-pressed="false">在地图上选择</button>
               <button type="button" id="reset-home" data-i18n="clear">清除</button>
             </div></div>

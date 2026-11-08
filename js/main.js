@@ -8,7 +8,7 @@ import { applyStatic, fmtClock, onLangChange, setLang, t } from "./i18n.js";
 import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
   clearProfile, clearTsunami, drawAftershocks, drawHome, drawLongPeriod, drawProfile, drawTsunami, drawQuakes, drawStations, enterDetail, exitDetail,
-  fitProfile, flyToView, initMap, onMapClick, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
+  fitProfile, flyToView, initMap, onMapClick, setViewChangeHandler, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
   setInundationVisible, setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible, setProfileHandler,
   setSegmentsVisible, setShelterHandler, setShelterType,
 } from "./map.js";
@@ -407,7 +407,9 @@ bindSegment("minmag", (v) => {
 });
 $("view").addEventListener("click", (ev) => {
   const b = ev.target.closest("button");
-  if (b) flyToView(b.dataset.v, state.home);
+  if (!b || b.disabled) return;
+  flyToView(b.dataset.v, state.home);
+  pressSegment("view", b.dataset.v); // stays highlighted until the map is moved
 });
 bindSegment("basemap", (v) => { state.basemap = v; setBasemap(v); updateMapSummary(v, state.nankaiMode); });
 bindSegment("nankai-mode", (v) => {
@@ -451,6 +453,7 @@ for (const [id, show] of [["plates", setPlatesVisible], ["historic", setHistoric
     if (!ok) { ev.target.checked = false; updateMapSummary(state.basemap, state.nankaiMode); }
   });
 }
+setViewChangeHandler(() => pressSegment("view", null));
 $("back").addEventListener("click", closeDetail);
 document.addEventListener("keydown", (ev) => {
   if (ev.key !== "Escape") return;
@@ -504,6 +507,7 @@ $("locate-home").addEventListener("click", async () => {
     saveHome(home);
     setHome(home);
     flyToView("home", home);
+    pressSegment("view", "home");
   } catch (msg) {
     setHomeLabel(state.home);
     setHomeNote(t(String(msg)));
@@ -526,7 +530,7 @@ onMapClick((lat, lon) => {
     return;
   }
   if (!state.picking) return;
-  const home = makeHome(lat, lon);
+  const home = makeHome(lat, lon, "map");
   saveHome(home);
   setPicking(false);
   setHome(home);

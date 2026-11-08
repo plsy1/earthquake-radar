@@ -11,7 +11,18 @@ export function setStatus(text, ok) {
   $("dot").classList.toggle("err", !ok);
 }
 
+// The location buttons show how the current location was set (and when picking is under way).
+let homeShown = null, pickingShown = false;
+function paintHomeButtons() {
+  $("locate-home").setAttribute("aria-pressed", String(homeShown?.via === "gps"));
+  const pick = $("pick-home");
+  pick.setAttribute("aria-pressed", String(pickingShown || homeShown?.via === "map"));
+  pick.textContent = t(pickingShown ? "picking" : "pick");
+}
+
 export function setHomeLabel(home) {
+  homeShown = home;
+  paintHomeButtons();
   $("home-name").textContent = t(home ? "homeSet" : "homeUnset");
   $("home-note").hidden = true;
   $("reset-home").hidden = !home;
@@ -42,9 +53,8 @@ export function updateMapSummary(basemap, nankaiMode) {
 }
 
 export function setPickButton(on) {
-  const b = $("pick-home");
-  b.setAttribute("aria-pressed", String(on));
-  b.textContent = t(on ? "picking" : "pick");
+  pickingShown = on;
+  paintHomeButtons();
 }
 
 /** A row of toggle buttons where exactly one is pressed. */
