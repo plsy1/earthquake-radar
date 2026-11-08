@@ -9,16 +9,38 @@
   （位置只保存在你自己的浏览器里，默认是名古屋站）
 - 可以叠加南海海槽巨大地震设想震源区的大致轮廓
 
-## 使用
+在线版：<https://earthquake-radar.pages.dev>
 
-直接用浏览器打开 `index.html` 即可，没有构建步骤，也不需要服务器。
-如果浏览器不允许本地文件读取网络数据，可以在本目录运行一个简单的服务器：
+## 本地运行
+
+没有构建步骤，也没有依赖要装。页面用的是浏览器原生的 ES modules，
+双击 `index.html`（`file://`）打不开，需要在本目录起一个静态服务器：
 
 ```bash
 python3 -m http.server 8000
 ```
 
 然后打开 <http://localhost:8000>。
+
+## 目录结构
+
+```
+index.html        页面结构
+css/style.css     样式（浅色 / 深色）
+js/main.js        入口：页面状态、事件绑定、定时刷新
+js/config.js      常量：数据地址、震度配色、地图视角、默认位置
+js/data.js        读取并合并气象厅的地震报告
+js/map.js         Leaflet 地图、震源圆点、南海海槽轮廓、图例
+js/ui.js          右侧面板：统计、列表、按钮
+js/home.js        "我的位置"的读取和保存
+js/nankai.js      南海海槽设想震源区的近似坐标
+js/util.js        格式化和距离计算
+```
+
+## 部署
+
+部署在 Cloudflare Pages：连接本仓库，Framework preset 选 None，
+Build command 留空，Build output directory 填 `/`。推送到 `main` 会自动部署。
 
 ## 数据来源
 
