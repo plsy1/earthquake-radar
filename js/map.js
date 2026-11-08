@@ -1,6 +1,7 @@
 // Leaflet map: base tiles, Nankai outline, home marker, earthquake circles.
 import {
-  COLOR, DARKTEXT, DEPTH_BANDS, LP_COLOR, HEAT_SCRIPT, HISTORIC_URL, NEAR_KM, ORDER, PLATE_LABELS, PLATES_URL,
+  COLOR, DARKTEXT, DEPTH_BANDS, INUNDATION_ATTRIBUTION, INUNDATION_LEGEND, INUNDATION_URL, LP_COLOR,
+  SHELTER_ATTRIBUTION, SHELTER_MIN_ZOOM, SHELTER_TYPES, SHELTER_URL, HEAT_SCRIPT, HISTORIC_URL, NEAR_KM, ORDER, PLATE_LABELS, PLATES_URL,
   TILE_ATTRIBUTION_URL, TRENCH_LABELS, UNKNOWN_COLOR, VIEWS, depthBand,
 } from "./config.js";
 import { initBasemap } from "./basemap.js";
@@ -19,6 +20,9 @@ let heatLayer = null, heatOn = false, heatPoints = [];
 let afterLayer = null, afterRenderer = null;   // aftershocks of the selected earthquake
 let lpLayer = null;                             // long-period ground motion stations
 let tsunamiLayer = null, tsunamiRenderer = null, tsunamiOn = false;
+let inundationLayer = null;                                  // tsunami inundation scenario tiles
+let shelterLayer = null, shelterRenderer = null, shelterType = null, onShelterStatus = null;
+const shelterTiles = new Map();                              // "type/x/y" -> Promise<features>
 let profileLayer = null, profileBtn = null;     // depth profile line and its map button
 
 const attributionHtml = () => `<a href="${TILE_ATTRIBUTION_URL}" target="_blank" rel="noopener">${t("attribution")}</a>`;
@@ -28,7 +32,11 @@ const legendHtml = () => (legendSource === "usgs"
   ? esc(t("legendDepth")) + '<div class="scale">' + DEPTH_BANDS.map((b) => swatch(b.color, b.dark, b.label, true)).join("") + "</div>"
   : esc(t("legend")) + '<div class="scale">' + ORDER.map((k) => swatch(COLOR[k], DARKTEXT.has(k), intLabel(k))).join("") + "</div>")
   + (platesOn ? `<div class="key">${esc(t("platesKey"))}</div>` : "")
-  + (tsunamiOn ? `<div class="key">${esc(t("tsKey"))}</div>` : "");
+  + (tsunamiOn ? `<div class="key">${esc(t("tsKey"))}</div>` : "")
+  + (inundationLayer && map.hasLayer(inundationLayer)
+    ? `<div class="key">${esc(t("inKey"))}</div><div class="scale">` +
+      INUNDATION_LEGEND.map((b) => swatch(b.color, true, b.label, true)).join("") + `</div><div class="key">${esc(t("inNote"))}</div>`
+    : "");
 
 /** Circle color: JMA events by max intensity, USGS events by depth. */
 export const quakeColor = (e) => (e.source === "usgs" ? depthBand(e.loc.depth).color : COLOR[e.maxi] || UNKNOWN_COLOR);
@@ -56,6 +64,12 @@ export function initMap(el, { basemap, features }) {
   map.createPane("tsunami").style.zIndex = 470;
   tsunamiRenderer = L.canvas({ pane: "tsunami" });
   tsunamiLayer = L.layerGroup().addTo(map);
+  // Inundation tiles sit just above the base map; shelters above the earthquake circles.
+  map.createPane("inundation").style.zIndex = 320;
+  map.createPane("shelters").style.zIndex = 455;
+  shelterRenderer = L.canvas({ pane: "shelters" });
+  shelterLayer = L.layerGroup().addTo(map);
+  map.on("moveend", () => { if (shelterType) loadShelters(); });
   profileLayer = L.layerGroup().addTo(map);
   // Segment names stay readable above the earthquake circles; they ignore the pointer.
   map.createPane("topLabels").style.zIndex = 610;
@@ -261,6 +275,7 @@ export function refreshMapLanguage() {
     if (platesOn) platesLabels.addTo(map);
   }
   if (segmentsOn) setSegmentsVisible(true);
+  if (shelterType) loadShelters(); // tooltips carry hazard names
   if (historicOn && historicData) setHistoricVisible(true);
   map.attributionControl.removeAttribution(attribution);
   attribution = attributionHtml();
@@ -378,6 +393,89 @@ export function clearTsunami() {
   tsunamiLayer.clearLayers();
   tsunamiOn = false;
   if (legendEl) legendEl.innerHTML = legendHtml();
+}
+
+// ---- tsunami inundation scenario ----
+
+export function setInundationVisible(on) {
+  if (!inundationLayer) {
+    inundationLayer = L.tileLayer(INUNDATION_URL, { pane: "inundation", opacity: 0.75, minZoom: 4, maxZoom: 18, maxNativeZoom: 17, minNativeZoom: 2 });
+  }
+  if (on && !map.hasLayer(inundationLayer)) { inundationLayer.addTo(map); map.attributionControl.addAttribution(INUNDATION_ATTRIBUTION); }
+  if (!on && map.hasLayer(inundationLayer)) { map.removeLayer(inundationLayer); map.attributionControl.removeAttribution(INUNDATION_ATTRIBUTION); }
+  if (legendEl) legendEl.innerHTML = legendHtml();
+}
+
+// ---- designated emergency evacuation sites ----
+
+/** Hazards a site is designated for (properties disaster1…disaster8). */
+const HAZARD_KEYS = ["", "hzFlood", "hzSlope", "hzSurge", "hzQuake", "hzTsunami", "hzFire", "hzInland", "hzVolcano"];
+export const shelterHazards = (p) => HAZARD_KEYS.filter((k, i) => k && p["disaster" + i]).map((k) => t(k));
+
+export const setShelterHandler = (fn) => { onShelterStatus = fn; };
+
+/** Show sites for one hazard type ("quake", "tsunami", …), or null to hide them. */
+export function setShelterType(type) {
+  const was = shelterType;
+  shelterType = type && SHELTER_TYPES[type] ? type : null;
+  if (!was && shelterType) map.attributionControl.addAttribution(SHELTER_ATTRIBUTION);
+  if (was && !shelterType) map.attributionControl.removeAttribution(SHELTER_ATTRIBUTION);
+  shelterLayer.clearLayers();
+  if (shelterType) loadShelters();
+  else onShelterStatus && onShelterStatus({ state: "off" });
+}
+
+function shelterTile(code, x, y) {
+  const key = `${code}/${x}/${y}`;
+  if (!shelterTiles.has(key)) {
+    const url = SHELTER_URL.replace("{type}", code).replace("{x}", x).replace("{y}", y);
+    const p = fetch(url)
+      .then((r) => (r.status === 404 ? { features: [] } : r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status))))
+      .then((d) => d.features || []);
+    p.catch(() => shelterTiles.delete(key));
+    shelterTiles.set(key, p);
+  }
+  return shelterTiles.get(key);
+}
+
+let shelterRequest = 0;
+async function loadShelters() {
+  const type = shelterType, req = ++shelterRequest;
+  if (map.getZoom() < SHELTER_MIN_ZOOM) {
+    shelterLayer.clearLayers();
+    onShelterStatus && onShelterStatus({ state: "zoomIn" });
+    return;
+  }
+  // Zoom-10 tiles covering the view.
+  const b = map.getBounds(), n = 1024;
+  const tx = (lon) => Math.floor(((lon + 180) / 360) * n);
+  const ty = (lat) => { const r = (lat * Math.PI) / 180; return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n); };
+  const jobs = [];
+  for (let x = tx(b.getWest()); x <= tx(b.getEast()); x++) {
+    for (let y = ty(b.getNorth()); y <= ty(b.getSouth()); y++) jobs.push(shelterTile(SHELTER_TYPES[type], x, y));
+  }
+  onShelterStatus && onShelterStatus({ state: "loading" });
+  try {
+    const tiles = await Promise.all(jobs);
+    if (req !== shelterRequest || type !== shelterType) return; // superseded by a newer move or type
+    shelterLayer.clearLayers();
+    let count = 0;
+    for (const features of tiles) {
+      for (const f of features) {
+        const [lon, lat] = f.geometry?.coordinates || [];
+        if (lat == null || !b.contains([lat, lon])) continue;
+        const p = f.properties || {};
+        L.circleMarker([lat, lon], {
+          renderer: shelterRenderer, radius: 5.5, color: "#fff", weight: 1.5, fillColor: "#15803d", fillOpacity: 1,
+        }).bindTooltip(`<b>${esc(p.name || "")}</b><br>${esc(p.address || "")}<br>${esc(t("shFor", { list: shelterHazards(p).join(t("nameSep")) }))}`, { direction: "top" })
+          .addTo(shelterLayer);
+        count++;
+      }
+    }
+    onShelterStatus && onShelterStatus({ state: "ok", count });
+  } catch (err) {
+    if (req === shelterRequest) onShelterStatus && onShelterStatus({ state: "failed" });
+  }
 }
 
 /** Stations that reached long-period class 1+, as numbered squares above the intensity dots. */

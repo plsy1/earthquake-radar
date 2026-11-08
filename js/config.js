@@ -17,6 +17,20 @@ export const NANKAI_FEED = "https://www.data.jma.go.jp/developer/xml/feed/eqvol_
 export const NANKAI_PAGE = "https://www.jma.go.jp/jma/kishou/know/jishin/nteq/index.html";
 export const ALERTS_REFRESH_MS = 60_000;
 export const NANKAI_REFRESH_MS = 5 * 60_000;
+// Designated emergency evacuation sites (GSI). One GeoJSON file per hazard type, only at zoom 10.
+export const SHELTER_URL = "https://cyberjapandata.gsi.go.jp/xyz/skhb{type}/10/{x}/{y}.geojson";
+export const SHELTER_TYPES = { quake: "04", tsunami: "05", fire: "06", flood: "01" };
+export const SHELTER_MIN_ZOOM = 12; // below this a view would need too many ~350 KB tiles
+export const SHELTER_ATTRIBUTION = '<a href="https://www.gsi.go.jp/bousaichiri/hinanbasho.html" target="_blank" rel="noopener">指定緊急避難場所：国土地理院</a>';
+// Tsunami inundation scenarios from the hazard map portal (prefecture data; some prefectures missing).
+export const INUNDATION_URL = "https://disaportaldata.gsi.go.jp/raster/04_tsunami_newlegend_data/{z}/{x}/{y}.png";
+export const INUNDATION_ATTRIBUTION = '<a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">出典：ハザードマップポータルサイト</a>';
+// National unified legend for tsunami inundation depth (m), checked against the tiles' colors.
+export const INUNDATION_LEGEND = [
+  { label: "<0.3", color: "#ffffb3" }, { label: "0.3–1", color: "#f7f5a9" }, { label: "1–2", color: "#f8e1a6" },
+  { label: "2–3", color: "#ffd8c0" }, { label: "3–5", color: "#ffb7b7" }, { label: "5–10", color: "#ff9191" },
+  { label: "10–20", color: "#f285c9" }, { label: "20+", color: "#dc7adc" },
+];
 // Colors for long-period classes 1–4.
 export const LP_COLOR = { "1": "#3aa6b9", "2": "#f2b134", "3": "#e8590c", "4": "#a61e4d" };
 export const REFRESH_MS = 60_000;

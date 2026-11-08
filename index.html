@@ -109,7 +109,17 @@
               <label class="check"><input type="checkbox" id="plates"> <span data-i18n="layerPlates">板块边界</span></label>
               <label class="check"><input type="checkbox" id="historic"> <span data-i18n="layerHistoric">历史大地震</span></label>
               <label class="check"><input type="checkbox" id="heat"> <span data-i18n="layerHeat">密度热力图</span></label>
+              <label class="check"><input type="checkbox" id="inundation"> <span data-i18n="layerInundation">海啸浸水设想</span></label>
             </div></div>
+          <div class="row"><span class="lbl" data-i18n="shelters">避难场所</span>
+            <div class="seg" id="shelter-type">
+              <button type="button" data-v="off" aria-pressed="true" data-i18n="shOff">关闭</button>
+              <button type="button" data-v="quake" aria-pressed="false" data-i18n="shQuake">地震</button>
+              <button type="button" data-v="tsunami" aria-pressed="false" data-i18n="shTsunami">海啸</button>
+              <button type="button" data-v="fire" aria-pressed="false" data-i18n="shFire">大火</button>
+              <button type="button" data-v="flood" aria-pressed="false" data-i18n="shFlood">洪水</button>
+            </div></div>
+          <div id="shelter-note" class="form-note" hidden></div>
           <div class="row row-top">
             <span class="lbl-stack"><span class="lbl" data-i18n="home">我的位置</span><span id="home-name" class="lbl-status"></span></span>
             <div class="actions">

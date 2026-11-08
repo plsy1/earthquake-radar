@@ -27,7 +27,7 @@ export function setHomeNote(text) {
 }
 
 const BASEMAP_KEY = { pale: "bmPale", std: "bmStd", photo: "bmPhoto", relief: "bmRelief" };
-const LAYER_IDS = ["plates", "historic", "heat"];
+const LAYER_IDS = ["plates", "historic", "heat", "inundation"];
 
 /** Fold or unfold the map settings rows. */
 export function setMapSettingsOpen(open) {

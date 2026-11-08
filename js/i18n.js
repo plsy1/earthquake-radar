@@ -19,6 +19,11 @@ const JMA_LINK = '<a href="https://www.jma.go.jp/bosai/map.html#contents=earthqu
 const STRINGS = {
   zh: {
     title: "震源速览",
+    layerInundation: "海啸浸水设想", inKey: "海啸浸水深（m，设想的最大级别）", inNote: "部分都道府县没有数据；详细请看市町村的灾害地图。",
+    shelters: "避难场所", shOff: "关闭", shQuake: "地震", shTsunami: "海啸", shFire: "大火", shFlood: "洪水",
+    shZoomIn: "放大到街区级别后显示指定紧急避难场所", shLoading: "正在读取避难场所…", shCount: "显示 {n} 处指定紧急避难场所",
+    shFailed: "无法读取避难场所数据", shFor: "适用：{list}",
+    hzFlood: "洪水", hzSlope: "滑坡・泥石流", hzSurge: "风暴潮", hzQuake: "地震", hzTsunami: "海啸", hzFire: "大规模火灾", hzInland: "内涝", hzVolcano: "火山",
     alertsTitle: "警报与临时情报", nkLabel: "南海海槽临时情报", tsLabel: "海啸",
     nkNone: "过去{d}天未发布", nkFailed: "无法读取", nkWarning: "巨大地震警戒", nkAdvisory: "巨大地震注意",
     nkInvestigating: "调查中", nkEnded: "调查结束", nkIssued: "已发布",
@@ -151,6 +156,11 @@ const STRINGS = {
   },
   ja: {
     title: "地震レーダー",
+    layerInundation: "津波浸水想定", inKey: "津波浸水深（m・想定最大クラス）", inNote: "一部の都道府県はデータがありません。詳しくは市町村のハザードマップを確認してください。",
+    shelters: "避難場所", shOff: "非表示", shQuake: "地震", shTsunami: "津波", shFire: "大火事", shFlood: "洪水",
+    shZoomIn: "拡大すると指定緊急避難場所が表示されます", shLoading: "避難場所を読み込み中…", shCount: "指定緊急避難場所 {n} か所を表示",
+    shFailed: "避難場所のデータを取得できません", shFor: "対応：{list}",
+    hzFlood: "洪水", hzSlope: "崖崩れ・土石流・地滑り", hzSurge: "高潮", hzQuake: "地震", hzTsunami: "津波", hzFire: "大規模な火事", hzInland: "内水氾濫", hzVolcano: "火山現象",
     alertsTitle: "警報・臨時情報", nkLabel: "南海トラフ臨時情報", tsLabel: "津波",
     nkNone: "過去{d}日間 発表なし", nkFailed: "取得できません", nkWarning: "巨大地震警戒", nkAdvisory: "巨大地震注意",
     nkInvestigating: "調査中", nkEnded: "調査終了", nkIssued: "発表あり",
@@ -283,6 +293,11 @@ const STRINGS = {
   },
   en: {
     title: "Earthquake Radar",
+    layerInundation: "Tsunami inundation", inKey: "Tsunami inundation depth (m, max-class scenario)", inNote: "Some prefectures have no data; see your municipality's hazard map for details.",
+    shelters: "Shelters", shOff: "Off", shQuake: "Quake", shTsunami: "Tsunami", shFire: "Fire", shFlood: "Flood",
+    shZoomIn: "Zoom in to street level to see designated evacuation sites", shLoading: "Loading evacuation sites…", shCount: "{n} designated evacuation sites shown",
+    shFailed: "Couldn't load evacuation sites", shFor: "For: {list}",
+    hzFlood: "flood", hzSlope: "landslide", hzSurge: "storm surge", hzQuake: "earthquake", hzTsunami: "tsunami", hzFire: "large fire", hzInland: "inland flooding", hzVolcano: "volcano",
     alertsTitle: "Alerts", nkLabel: "Nankai Trough info", tsLabel: "Tsunami",
     nkNone: "none in the past {d} days", nkFailed: "unavailable", nkWarning: "Megaquake Warning", nkAdvisory: "Megaquake Advisory",
     nkInvestigating: "Under investigation", nkEnded: "Investigation ended", nkIssued: "Issued",

@@ -9,7 +9,8 @@ import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
   clearProfile, clearTsunami, drawAftershocks, drawHome, drawLongPeriod, drawProfile, drawTsunami, drawQuakes, drawStations, enterDetail, exitDetail,
   fitProfile, flyToView, initMap, onMapClick, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
-  setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible, setProfileHandler, setSegmentsVisible,
+  setInundationVisible, setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible, setProfileHandler,
+  setSegmentsVisible, setShelterHandler, setShelterType,
 } from "./map.js";
 import {
   applySourceUi, bindSegment, lpStationLine, pressSegment, renderAlertsBar, renderAlertsView, renderDetail, renderList, renderProfile, renderStats, setHomeLabel,
@@ -414,9 +415,22 @@ bindSegment("nankai-mode", (v) => {
   setSegmentsVisible(v === "segments");
   updateMapSummary(state.basemap, v);
 });
-for (const id of ["plates", "historic", "heat"]) {
+for (const id of ["plates", "historic", "heat", "inundation"]) {
   $(id).addEventListener("change", () => updateMapSummary(state.basemap, state.nankaiMode));
 }
+$("inundation").addEventListener("change", (ev) => setInundationVisible(ev.target.checked));
+
+// Evacuation sites: one hazard type at a time, shown once zoomed in to street level.
+let shelterStatus = { state: "off" };
+function showShelterStatus() {
+  const s = shelterStatus, note = $("shelter-note");
+  const text = s.state === "zoomIn" ? t("shZoomIn") : s.state === "loading" ? t("shLoading")
+    : s.state === "ok" ? t("shCount", { n: s.count }) : s.state === "failed" ? t("shFailed") : "";
+  note.textContent = text;
+  note.hidden = !text;
+}
+setShelterHandler((s) => { shelterStatus = s; showShelterStatus(); });
+bindSegment("shelter-type", (v) => setShelterType(v === "off" ? null : v));
 
 // Map settings start open on wide screens and folded on phones, then follow the viewer's choice.
 const MAP_OPEN_KEY = "quake-radar.mapOpen";
@@ -533,6 +547,7 @@ onLangChange(() => {
   refreshDetail({ stations: true });
   paintAlerts();
   updateTsunamiMap();
+  showShelterStatus();
 });
 
 $("refresh").addEventListener("click", () => { load(); loadAlerts(true); });

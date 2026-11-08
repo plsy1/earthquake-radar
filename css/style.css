@@ -219,3 +219,4 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .al-hist button:hover{background:var(--hover)}
 .al-advice{margin-top:8px;padding:8px 10px;border-radius:8px;background:#ffe1de;color:#5c0d08;font-weight:500}
 @media (prefers-color-scheme:dark){.al-advice{background:#4a1512;color:#ffd6d1}.al-state[data-level="amber"]{background:#5a4300;color:#ffe9a8}.al-state[data-level="info"]{background:#0c3a52;color:#d9effa}}
+#shelter-type button{padding-inline:7px}
