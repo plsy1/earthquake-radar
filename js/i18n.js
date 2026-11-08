@@ -19,6 +19,7 @@ const JMA_LINK = '<a href="https://www.jma.go.jp/bosai/map.html#contents=earthqu
 const STRINGS = {
   zh: {
     title: "震源速览",
+    theme: "主题", themeAuto: "自动", themeLight: "浅色", themeDark: "深色",
     layerInundation: "海啸浸水设想", inKey: "海啸浸水深（m，设想的最大级别）", inNote: "部分都道府县没有数据；详细请看市町村的灾害地图。",
     shelters: "避难场所", shOff: "关闭", shQuake: "地震", shTsunami: "海啸", shFire: "大火", shFlood: "洪水",
     shZoomIn: "放大到街区级别后显示指定紧急避难场所", shLoading: "正在读取避难场所…", shCount: "显示 {n} 处指定紧急避难场所",
@@ -156,6 +157,7 @@ const STRINGS = {
   },
   ja: {
     title: "地震レーダー",
+    theme: "テーマ", themeAuto: "自動", themeLight: "ライト", themeDark: "ダーク",
     layerInundation: "津波浸水想定", inKey: "津波浸水深（m・想定最大クラス）", inNote: "一部の都道府県はデータがありません。詳しくは市町村のハザードマップを確認してください。",
     shelters: "避難場所", shOff: "非表示", shQuake: "地震", shTsunami: "津波", shFire: "大火事", shFlood: "洪水",
     shZoomIn: "拡大すると指定緊急避難場所が表示されます", shLoading: "避難場所を読み込み中…", shCount: "指定緊急避難場所 {n} か所を表示",
@@ -293,6 +295,7 @@ const STRINGS = {
   },
   en: {
     title: "Earthquake Radar",
+    theme: "Theme", themeAuto: "Auto", themeLight: "Light", themeDark: "Dark",
     layerInundation: "Tsunami inundation", inKey: "Tsunami inundation depth (m, max-class scenario)", inNote: "Some prefectures have no data; see your municipality's hazard map for details.",
     shelters: "Shelters", shOff: "Off", shQuake: "Quake", shTsunami: "Tsunami", shFire: "Fire", shFlood: "Flood",
     shZoomIn: "Zoom in to street level to see designated evacuation sites", shLoading: "Loading evacuation sites…", shCount: "{n} designated evacuation sites shown",

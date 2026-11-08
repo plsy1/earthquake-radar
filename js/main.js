@@ -531,6 +531,21 @@ onMapClick((lat, lon) => {
   setHome(home);
 });
 
+// Theme: "auto" follows the system; "light"/"dark" are saved and set data-theme on <html>.
+const THEME_KEY = "quake-radar.theme";
+function applyTheme(theme) {
+  if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  else delete document.documentElement.dataset.theme;
+  pressSegment("theme", theme === "light" || theme === "dark" ? theme : "auto");
+}
+let savedTheme = "auto";
+try { savedTheme = localStorage.getItem(THEME_KEY) || "auto"; } catch (_) { /* default */ }
+applyTheme(savedTheme);
+bindSegment("theme", (v) => {
+  applyTheme(v);
+  try { if (v === "auto") localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, v); } catch (_) { /* not remembered */ }
+});
+
 $("lang").addEventListener("click", (ev) => {
   const b = ev.target.closest("button");
   if (b) setLang(b.dataset.v);

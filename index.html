@@ -10,6 +10,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@700&display=swap">
 <link rel="stylesheet" href="css/style.css">
+<script>
+  // Apply a saved light/dark choice before the page paints, so it doesn't flash.
+  try { const th = localStorage.getItem("quake-radar.theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch (_) {}
+</script>
 </head>
 <body>
 <!-- Text in this file is the Chinese fallback; js/i18n.js fills in the chosen language. -->
@@ -20,6 +24,11 @@
     <div class="status">
       <span class="dot" id="dot"></span><span id="status">…</span>
       <button id="refresh" type="button" data-i18n="refresh">刷新</button>
+      <div class="seg lang theme" id="theme" role="group" data-i18n-aria="theme" aria-label="主题">
+        <button type="button" data-v="auto" aria-pressed="true" data-i18n="themeAuto">自动</button>
+        <button type="button" data-v="light" aria-pressed="false" data-i18n="themeLight">浅色</button>
+        <button type="button" data-v="dark" aria-pressed="false" data-i18n="themeDark">深色</button>
+      </div>
       <div class="seg lang" id="lang" role="group" aria-label="Language / 语言 / 言語">
         <button type="button" data-v="zh" lang="zh-CN" aria-pressed="false">中文</button>
         <button type="button" data-v="ja" lang="ja" aria-pressed="false">日本語</button>
