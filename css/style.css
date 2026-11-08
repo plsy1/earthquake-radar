@@ -99,3 +99,4 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .epi::before,.epi::after{content:"";position:absolute;left:50%;top:50%;width:24px;height:5px;background:#d7261e;box-shadow:0 0 0 1.5px #fff;border-radius:1px}
 .epi::before{transform:translate(-50%,-50%) rotate(45deg)}
 .epi::after{transform:translate(-50%,-50%) rotate(-45deg)}
+.seg button:disabled{opacity:.4;cursor:not-allowed;background:transparent}

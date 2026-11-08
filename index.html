@@ -43,17 +43,18 @@
         <div class="row"><span class="lbl">我的位置</span>
           <div class="seg">
             <span id="home-name" class="home-current"></span>
+            <button type="button" id="locate-home">使用当前位置</button>
             <button type="button" id="pick-home" aria-pressed="false">在地图上选择</button>
-            <button type="button" id="reset-home">重置</button>
+            <button type="button" id="reset-home">清除</button>
           </div></div>
         <label class="check"><input type="checkbox" id="nankai" checked> 显示南海海槽设想震源区（大致示意）</label>
       </div>
       <div id="overview" class="overview">
       <div class="stats">
-        <div class="stat"><b id="s-count">–</b><span>地震次数</span></div>
-        <div class="stat"><b id="s-maxi">–</b><span id="s-maxi-at">最大震度</span></div>
-        <div class="stat"><b id="s-mag">–</b><span id="s-mag-at">最大震级</span></div>
-        <div class="stat"><b id="s-near">–</b><span id="s-near-lbl">距我的位置100km以内</span></div>
+        <div class="stat"><b id="s-count">–</b><span id="s-count-lbl">有感地震</span></div>
+        <div class="stat"><b id="s-maxi">–</b><span id="s-maxi-lbl">最强摇晃</span></div>
+        <div class="stat"><b id="s-mag">–</b><span id="s-mag-lbl">最大震级</span></div>
+        <div class="stat"><b id="s-near">–</b><span id="s-near-lbl">最新一次</span></div>
       </div>
       <ul id="list" aria-label="地震列表"><li class="empty">正在读取…</li></ul>
       </div>

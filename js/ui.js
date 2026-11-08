@@ -8,8 +8,16 @@ export function setStatus(text, ok) {
 }
 
 export function setHomeLabel(home) {
-  $("home-name").textContent = home.name;
-  $("s-near-lbl").textContent = `距${home.name}${NEAR_KM}km以内`;
+  $("home-name").textContent = home ? "已设置" : "未设置";
+  $("reset-home").hidden = !home;
+  const viewBtn = document.querySelector('#view button[data-v="home"]');
+  viewBtn.disabled = !home;
+  viewBtn.title = home ? "" : "先设置我的位置";
+}
+
+/** Short notes next to the location controls, e.g. while asking the browser. */
+export function setHomeNote(text) {
+  $("home-name").textContent = text;
 }
 
 export function setPickButton(on) {
@@ -73,8 +81,8 @@ export function renderDetail(e, { home, detail, message }) {
     el("h2", null, e.anm || "震源不明"),
     el("div", "facts", `${fmtTime.format(e.time)}（${ago(e.time)}）`),
     el("div", "facts", `${magText(e.mag)} · ${depthText(e.loc.depth)} · 北纬${e.loc.lat} 东经${e.loc.lon}`),
-    el("div", "facts", `距${home.name}约 ${Math.round(e.dist)} km`),
   );
+  if (home) head.appendChild(el("div", "facts", `距我的位置约 ${Math.round(e.dist)} km`));
   top.appendChild(head);
   body.appendChild(top);
 
@@ -86,7 +94,7 @@ export function renderDetail(e, { home, detail, message }) {
   if (detail.comment) body.appendChild(el("div", "note", detail.comment));
 
   // The station nearest to "my location" is the best guess at how it felt there.
-  if (detail.stations.length) {
+  if (home && detail.stations.length) {
     let near = null, nearKm = Infinity;
     for (const s of detail.stations) {
       const d = km(home, s);
@@ -146,15 +154,32 @@ export function renderDetail(e, { home, detail, message }) {
   }
 }
 
-export function renderStats(list) {
+const PERIOD_TEXT = { "24": "最近24小时", "168": "最近7天", all: "最近约30天" };
+
+/**
+ * Four summary tiles for the earthquakes currently shown. Labels say which
+ * time range and intensity filter the numbers cover.
+ */
+export function renderStats(list, { home, periodHours, minRank }) {
   const top = list.reduce((a, b) => (!a || rank(b.maxi) > rank(a.maxi) ? b : a), null);
   const big = list.reduce((a, b) => (!a || (+b.mag || 0) > (+a.mag || 0) ? b : a), null);
+  const scope = PERIOD_TEXT[periodHours] || "";
+  const filter = minRank > 0 ? `震度${LABEL[ORDER[minRank]]}以上的` : "有感";
+
   $("s-count").textContent = list.length;
+  $("s-count-lbl").textContent = `${scope}${filter}地震`;
   $("s-maxi").textContent = top ? "震度" + (LABEL[top.maxi] || "–") : "–";
-  $("s-maxi-at").textContent = top ? top.anm : "最大震度";
+  $("s-maxi-lbl").textContent = top ? `摇得最强 · ${top.anm}` : "摇得最强";
   $("s-mag").textContent = big && !isNaN(+big.mag) ? magText(big.mag) : "–";
-  $("s-mag-at").textContent = big ? big.anm : "最大震级";
-  $("s-near").textContent = list.filter((e) => e.dist <= NEAR_KM).length;
+  $("s-mag-lbl").textContent = big ? `震级最大 · ${big.anm}` : "震级最大";
+  if (home) {
+    $("s-near").textContent = list.filter((e) => e.dist != null && e.dist <= NEAR_KM).length;
+    $("s-near-lbl").textContent = `震源在我的位置${NEAR_KM}km内`;
+  } else {
+    // Newest first, so list[0] is the latest earthquake.
+    $("s-near").textContent = list.length ? ago(list[0].time) : "–";
+    $("s-near-lbl").textContent = list.length ? `最新一次 · ${list[0].anm}` : "最新一次";
+  }
 }
 
 export function renderList(list, { home, fresh, hasAny, onSelect }) {
@@ -185,7 +210,7 @@ function listItem(e, home, isFresh, onSelect) {
   place.textContent = e.anm || "震源不明";
   const meta = document.createElement("div");
   meta.className = "meta";
-  meta.textContent = `${fmtTime.format(e.time)} · ${ago(e.time)} · 距${home.name}${Math.round(e.dist)}km`;
+  meta.textContent = `${fmtTime.format(e.time)} · ${ago(e.time)}` + (home ? ` · 距我${Math.round(e.dist)}km` : "");
   mid.append(place, meta);
 
   const mag = document.createElement("div");

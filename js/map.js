@@ -44,6 +44,7 @@ export function setNankaiVisible(on) {
 
 export function drawHome(home) {
   homeLayer.clearLayers();
+  if (!home) return;
   const at = [home.lat, home.lon];
   L.circle(at, { radius: NEAR_KM * 1000, color: "#5d6b7a", weight: 1, dashArray: "3 5", fill: false, interactive: false }).addTo(homeLayer);
   L.marker(at, {
@@ -125,7 +126,7 @@ function addEpicenter(e) {
 
 export function flyToView(key, home) {
   userMoved = true;
-  if (key === "home") map.flyTo([home.lat, home.lon], 8, { duration: 0.8 });
+  if (key === "home") { if (home) map.flyTo([home.lat, home.lon], 8, { duration: 0.8 }); }
   else if (VIEWS[key]) map.flyToBounds(VIEWS[key].bounds, { duration: 0.8 });
 }
 

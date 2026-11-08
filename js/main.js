@@ -1,13 +1,13 @@
 // Entry point: holds page state and wires data, map and panel together.
 import { REFRESH_MS } from "./config.js";
 import { fetchDetail, fetchEvents } from "./data.js";
-import { defaultHome, loadHome, pickedHome, saveHome } from "./home.js";
+import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
   drawHome, drawQuakes, drawStations, enterDetail, exitDetail, flyToView,
   initMap, onMapClick, setNankaiVisible, setPickCursor,
 } from "./map.js";
 import {
-  bindSegment, renderDetail, renderList, renderStats, setHomeLabel, setPickButton,
+  bindSegment, renderDetail, renderList, renderStats, setHomeLabel, setHomeNote, setPickButton,
   setStatus, showDetailView, tooltipHtml,
 } from "./ui.js";
 import { $, fmtClock, km, rank } from "./util.js";
@@ -19,7 +19,7 @@ const state = {
   sig: "",
   periodHours: "168",  // "24" | "168" | "all"
   minRank: 0,
-  home: loadHome(),
+  home: loadHome(),     // null until the viewer sets a location
   picking: false,
   selected: null,      // eid of the earthquake shown in the detail panel
 };
@@ -30,10 +30,10 @@ function visibleEvents() {
 }
 
 function render() {
-  for (const e of state.events) e.dist = km(state.home, e.loc);
+  for (const e of state.events) e.dist = state.home ? km(state.home, e.loc) : null;
   const list = visibleEvents();
   drawQuakes(list, { tooltipFor: tooltipHtml, onSelect: openDetail });
-  renderStats(list);
+  renderStats(list, state);
   renderList(list, { home: state.home, fresh: state.fresh, hasAny: state.events.length > 0, onSelect: openDetail });
 }
 
@@ -118,10 +118,23 @@ $("back").addEventListener("click", closeDetail);
 document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && state.selected) closeDetail(); });
 
 $("pick-home").addEventListener("click", () => setPicking(!state.picking));
-$("reset-home").addEventListener("click", () => { setPicking(false); saveHome(null); setHome(defaultHome()); });
+$("reset-home").addEventListener("click", () => { setPicking(false); saveHome(null); setHome(null); });
+$("locate-home").addEventListener("click", async () => {
+  setPicking(false);
+  setHomeNote("正在获取…");
+  try {
+    const home = await locateBrowser();
+    saveHome(home);
+    setHome(home);
+    flyToView("home", home);
+  } catch (msg) {
+    setHomeLabel(state.home);
+    setHomeNote(String(msg));
+  }
+});
 onMapClick((lat, lon) => {
   if (!state.picking) return;
-  const home = pickedHome(lat, lon);
+  const home = makeHome(lat, lon);
   saveHome(home);
   setPicking(false);
   setHome(home);

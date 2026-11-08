@@ -8,9 +8,8 @@ export const NEAR_KM = 100;
 // In the detail panel, the closest station within this distance stands in for "my location".
 export const NEARBY_STATION_KM = 40;
 
-// Distances are measured from "my location". The default is a public landmark;
-// each viewer can pick their own point on the map, kept only in their browser.
-export const DEFAULT_HOME = { lat: 35.1709, lon: 136.8815, name: "名古屋站" };
+// "My location" is optional. A viewer can set it from the browser's location or
+// by clicking the map; it is kept only in their browser.
 export const HOME_KEY = "quake-radar.home";
 
 // JMA seismic-intensity classes, weakest first.
