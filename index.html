@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>震源速览</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700&display=swap">
+<style>
+/* layout: header strip on top, live map on the left, event rail on the right; stacks on phones */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#16202b; --muted:#5d6b7a; --line:#d6dce3; --hover:#f2f5f8;
+  --accent:#c8322b; --ok:#2a9d64;
+  --f-display:"Noto Serif SC","Songti SC",serif;
+  --f-body:"Noto Sans SC","PingFang SC","Hiragino Sans",system-ui,sans-serif;
+  --f-data:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0d131a;--panel:#141c25;--ink:#e5ecf2;--muted:#8c9bac;--line:#253140;--hover:#1b2531;--accent:#ff5d50;--ok:#3cc483;color-scheme:dark}
+  .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.85)}
+}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--f-body)}
+button{font:inherit;color:inherit}
+.app{display:grid;grid-template-rows:auto minmax(0,1fr);height:100%}
+header{display:flex;align-items:baseline;gap:6px 16px;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+h1{font:700 22px/1.2 var(--f-display);margin:0;letter-spacing:.04em}
+.sub{color:var(--muted);font-size:13px}
+.status{margin-left:auto;display:flex;align-items:center;gap:8px;font:12px var(--f-data);color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+.dot.err{background:var(--accent)}
+.status button{border:1px solid var(--line);background:transparent;border-radius:6px;padding:2px 10px;cursor:pointer;font-size:12px}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;min-height:0}
+#map{height:100%;min-height:0;background:var(--bg)}
+aside{border-left:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.controls{padding:14px 16px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.lbl{font-size:12px;color:var(--muted);letter-spacing:.06em}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button{font-size:13px;padding:3px 10px;border:1px solid var(--line);background:transparent;border-radius:6px;cursor:pointer}
+.seg button:hover{background:var(--hover)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.check{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.stat{background:var(--panel);padding:10px 16px;min-width:0}
+.stat b{display:block;font:600 22px/1.25 var(--f-data);font-variant-numeric:tabular-nums}
+.stat span{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#list{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1;min-height:0}
+#list li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+#list li:hover{background:var(--hover)}
+#list li.fresh .place::after{content:"新";margin-left:6px;font-size:11px;color:var(--panel);background:var(--accent);padding:0 5px;border-radius:4px;vertical-align:2px}
+.chip{width:40px;height:40px;border-radius:6px;display:grid;place-items:center;font:700 14px var(--f-body);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.place{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta{font:12px var(--f-data);color:var(--muted);font-variant-numeric:tabular-nums}
+.mag{font:600 15px var(--f-data);text-align:right;font-variant-numeric:tabular-nums}
+.mag small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.empty{padding:24px 16px;color:var(--muted)}
+.home-current{align-self:center;font-size:13px;margin-right:4px}
+.foot{padding:10px 16px;font-size:11px;color:var(--muted);border-top:1px solid var(--line)}
+.foot a{color:inherit}
+.legend{background:var(--panel);color:var(--ink);padding:8px 10px;border-radius:8px;border:1px solid var(--line);font:12px var(--f-body)}
+.scale{display:flex;gap:2px;margin-top:4px}
+.scale i{width:28px;height:18px;display:grid;place-items:center;font-style:normal;font-size:11px;border-radius:2px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--ink)}
+.leaflet-popup-content{font:13px/1.6 var(--f-body);margin:10px 14px}
+.leaflet-popup-content b{font-size:14px}
+.leaflet-container a.leaflet-popup-close-button{color:var(--muted)}
+.leaflet-control-attribution{font-size:10px}
+.pulse{width:18px;height:18px;margin:-1px 0 0 -1px;border-radius:50%;border:2px solid var(--accent);animation:pulse 1.8s ease-out infinite;box-sizing:border-box}
+@keyframes pulse{from{transform:scale(.7);opacity:1}to{transform:scale(3.2);opacity:0}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none;transform:scale(1.6)}}
+.home{width:12px;height:12px;background:var(--ink);border:2px solid var(--panel);transform:rotate(45deg);box-sizing:border-box}
+.home-label{font:600 12px var(--f-body);color:var(--ink);text-shadow:0 0 3px var(--panel),0 0 3px var(--panel);white-space:nowrap}
+@media (max-width:860px){
+  .app{height:auto;display:block}
+  header{padding:12px 16px}
+  .status{margin-left:0;width:100%}
+  .main{display:block}
+  #map{height:58vh}
+  aside{border-left:0;border-top:1px solid var(--line)}
+  #list{overflow:visible}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>震源速览</h1>
+    <div class="sub">气象厅有感地震 · 最近约30天 · 颜色为各地观测到的最大震度</div>
+    <div class="status"><span class="dot" id="dot"></span><span id="status">正在读取气象厅数据…</span><button id="refresh" type="button">刷新</button></div>
+  </header>
+  <div class="main">
+    <div id="map" role="region" aria-label="地震分布地图"></div>
+    <aside>
+      <div class="controls">
+        <div class="row"><span class="lbl">时间范围</span>
+          <div class="seg" id="period">
+            <button type="button" data-v="24" aria-pressed="false">24小时</button>
+            <button type="button" data-v="168" aria-pressed="true">7天</button>
+            <button type="button" data-v="all" aria-pressed="false">全部</button>
+          </div></div>
+        <div class="row"><span class="lbl">最大震度</span>
+          <div class="seg" id="minint">
+            <button type="button" data-v="0" aria-pressed="true">全部</button>
+            <button type="button" data-v="2" aria-pressed="false">3以上</button>
+            <button type="button" data-v="3" aria-pressed="false">4以上</button>
+            <button type="button" data-v="4" aria-pressed="false">5弱以上</button>
+          </div></div>
+        <div class="row"><span class="lbl">地图视角</span>
+          <div class="seg" id="view">
+            <button type="button" data-v="jp" aria-pressed="false">全国</button>
+            <button type="button" data-v="tokai" aria-pressed="false">东海・南海</button>
+            <button type="button" data-v="home" aria-pressed="false">我的位置周边</button>
+          </div></div>
+        <div class="row"><span class="lbl">我的位置</span>
+          <div class="seg">
+            <span id="home-name" class="home-current"></span>
+            <button type="button" id="pick-home" aria-pressed="false">在地图上选择</button>
+            <button type="button" id="reset-home">重置</button>
+          </div></div>
+        <label class="check"><input type="checkbox" id="nankai" checked> 显示南海海槽设想震源区（大致示意）</label>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="s-count">–</b><span>地震次数</span></div>
+        <div class="stat"><b id="s-maxi">–</b><span id="s-maxi-at">最大震度</span></div>
+        <div class="stat"><b id="s-mag">–</b><span id="s-mag-at">最大震级</span></div>
+        <div class="stat"><b id="s-near">–</b><span id="s-near-lbl">距我的位置100km以内</span></div>
+      </div>
+      <ul id="list" aria-label="地震列表"><li class="empty">正在读取…</li></ul>
+      <div class="foot">数据：<a href="https://www.jma.go.jp/bosai/map.html#contents=earthquake_map" target="_blank" rel="noopener">气象厅</a>（每60秒自动更新）· 底图：国土地理院 · 南海海槽范围按内阁府原图手工描绘，仅供参考</div>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+const SRC = "https://www.jma.go.jp/bosai/quake/data/list.json";
+// Distances are measured from "my location". The default is a public landmark;
+// each viewer can pick their own point on the map, which is kept only in their browser.
+const DEFAULT_HOME = {lat:35.1709, lon:136.8815, name:"名古屋站"};
+const HOME_KEY = "quake-radar.home";
+function loadHome(){
+  try{
+    const h = JSON.parse(localStorage.getItem(HOME_KEY) || "null");
+    if(h && isFinite(h.lat) && isFinite(h.lon)) return {lat:+h.lat, lon:+h.lon, name:"我的位置"};
+  }catch(_){}
+  return {...DEFAULT_HOME};
+}
+function saveHome(h){
+  try{ h ? localStorage.setItem(HOME_KEY, JSON.stringify({lat:h.lat, lon:h.lon})) : localStorage.removeItem(HOME_KEY); }catch(_){}
+}
+let HOME = loadHome();
+const ORDER = ["1","2","3","4","5-","5+","6-","6+","7"];
+const LABEL = {"1":"1","2":"2","3":"3","4":"4","5-":"5弱","5+":"5强","6-":"6弱","6+":"6强","7":"7"};
+// JMA's standard seismic-intensity colors
+const COLOR = {"1":"#F2F2FF","2":"#00AAFF","3":"#0041FF","4":"#FAE696","5-":"#FFE600","5+":"#FF9900","6-":"#FF2800","6+":"#A50021","7":"#B40068"};
+const DARKTEXT = new Set(["1","4","5-","5+"]);
+const VIEWS = {
+  jp:{bounds:[[30.0,128.5],[45.6,146.0]]},
+  tokai:{bounds:[[31.0,131.0],[36.3,139.6]]}
+};
+// Approximate outline of the Cabinet Office (2012) assumed source region, traced by hand
+const NANKAI = [[31.60,131.45],[32.40,131.70],[33.00,132.00],[33.30,132.40],[33.60,132.80],[33.90,133.40],[34.05,134.20],[34.00,134.80],[33.95,135.10],[34.30,135.60],[34.60,136.10],[34.90,136.50],[35.20,136.80],[35.30,137.30],[35.38,137.90],[35.40,138.40],[35.20,138.65],[34.70,138.65],[34.40,138.55],[33.90,138.20],[33.50,137.50],[33.10,136.60],[32.85,135.80],[32.60,135.00],[32.20,134.20],[31.60,133.30],[31.10,132.90],[31.00,132.40],[31.30,131.80]];
+
+const rank = m => ORDER.indexOf(m || "");
+const $ = id => document.getElementById(id);
+const fmt = new Intl.DateTimeFormat("zh-CN",{timeZone:"Asia/Tokyo",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false});
+const fmtClock = new Intl.DateTimeFormat("zh-CN",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function parseCod(c){
+  const m = /^([+-]\d{1,2}\.\d+)([+-]\d{2,3}\.\d+)([+-]\d+)?\/?$/.exec(c || "");
+  if(!m) return null;
+  return {lat:+m[1], lon:+m[2], depth: m[3]==null ? null : Math.abs(+m[3])/1000};
+}
+function eidDate(e){
+  const s = String(e);
+  return new Date(`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}T${s.slice(8,10)}:${s.slice(10,12)}:${s.slice(12,14)}+09:00`);
+}
+function km(a,b){
+  const R=6371, r=Math.PI/180;
+  const dLat=(b.lat-a.lat)*r, dLon=(b.lon-a.lon)*r;
+  const h=Math.sin(dLat/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function ago(d){
+  const m = Math.round((Date.now()-d)/60000);
+  if(m < 1) return "刚刚";
+  if(m < 60) return m+"分钟前";
+  const h = Math.floor(m/60);
+  if(h < 48) return h+"小时前";
+  return Math.floor(h/24)+"天前";
+}
+const depthText = d => d==null ? "深度不明" : d===0 ? "极浅" : `深${d}km`;
+const magText = m => (m && !isNaN(+m)) ? "M"+(+m).toFixed(1) : "M不明";
+
+function toEvents(list){
+  const byId = new Map();
+  for(const r of list){
+    if(!r || !r.eid || (r.ttl||"").includes("遠地")) continue;
+    let g = byId.get(r.eid);
+    if(!g){ g = {eid:r.eid, time:eidDate(r.eid), maxi:"", mag:"", anm:"", loc:null}; byId.set(r.eid,g); }
+    if(rank(r.maxi) > rank(g.maxi)) g.maxi = r.maxi;
+    const loc = parseCod(r.cod);
+    if(loc && !g.loc){ g.loc = loc; g.mag = r.mag; g.anm = r.anm; }
+    if(!g.anm && r.anm) g.anm = r.anm;
+  }
+  return [...byId.values()]
+    .filter(g => g.loc && g.loc.lat>20 && g.loc.lat<50 && g.loc.lon>120 && g.loc.lon<156)
+    .sort((a,b)=>b.time-a.time);
+}
+
+// ---- map ----
+const map = L.map("map",{zoomControl:true, worldCopyJump:false, preferCanvas:true}).fitBounds(VIEWS.jp.bounds);
+L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",{
+  maxZoom:18, minZoom:4,
+  attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a>'
+}).addTo(map);
+
+const nankaiLayer = L.polygon(NANKAI,{color:"#c8322b",weight:1.5,dashArray:"6 5",fillColor:"#c8322b",fillOpacity:.07,interactive:false}).addTo(map);
+const homeLayer = L.layerGroup().addTo(map);
+function drawHome(){
+  homeLayer.clearLayers();
+  L.circle([HOME.lat,HOME.lon],{radius:100000,color:"#5d6b7a",weight:1,dashArray:"3 5",fill:false,interactive:false}).addTo(homeLayer);
+  L.marker([HOME.lat,HOME.lon],{icon:L.divIcon({className:"",html:'<div class="home"></div>',iconSize:[12,12],iconAnchor:[6,6]}),keyboard:false,title:HOME.name}).addTo(homeLayer);
+  L.marker([HOME.lat,HOME.lon],{icon:L.divIcon({className:"home-label",html:esc(HOME.name),iconSize:[64,16],iconAnchor:[-8,8]}),interactive:false,keyboard:false}).addTo(homeLayer);
+  $("home-name").textContent = HOME.name;
+  $("s-near-lbl").textContent = `距${HOME.name}100km以内`;
+}
+drawHome();
+const quakeLayer = L.layerGroup().addTo(map);
+let firstFit = true;
+new ResizeObserver(() => {
+  map.invalidateSize();
+  if(firstFit && map.getSize().y > 50){ firstFit = false; map.fitBounds(VIEWS.jp.bounds); }
+}).observe($("map"));
+
+const legend = L.control({position:"bottomleft"});
+legend.onAdd = function(){
+  const d = L.DomUtil.create("div","legend");
+  d.innerHTML = '最大震度 · 圆越大震级越高<div class="scale">' + ORDER.map(k =>
+    `<i style="background:${COLOR[k]};color:${DARKTEXT.has(k)?"#1a1a1a":"#fff"}">${LABEL[k]}</i>`).join("") + "</div>";
+  return d;
+};
+legend.addTo(map);
+
+$("nankai").addEventListener("change", e => e.target.checked ? nankaiLayer.addTo(map) : map.removeLayer(nankaiLayer));
+
+// ---- state ----
+let events = [], seen = null, freshIds = new Set(), lastSig = "";
+let period = "168", minInt = 0;
+const markers = new Map();
+
+function setPressed(groupId, v){
+  document.querySelectorAll(`#${groupId} button`).forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v===v)));
+}
+$("period").addEventListener("click", e => { const b=e.target.closest("button"); if(!b) return; period=b.dataset.v; setPressed("period",period); render(); });
+$("minint").addEventListener("click", e => { const b=e.target.closest("button"); if(!b) return; minInt=+b.dataset.v; setPressed("minint",b.dataset.v); render(); });
+$("view").addEventListener("click", e => {
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.v === "home"){ map.flyTo([HOME.lat,HOME.lon],8,{duration:.8}); return; }
+  map.flyToBounds(VIEWS[b.dataset.v].bounds,{duration:.8});
+});
+
+let picking = false;
+function setPicking(on){
+  picking = on;
+  $("pick-home").setAttribute("aria-pressed", String(on));
+  $("pick-home").textContent = on ? "点击地图上的位置…" : "在地图上选择";
+  map.getContainer().style.cursor = on ? "crosshair" : "";
+}
+$("pick-home").addEventListener("click", () => setPicking(!picking));
+$("reset-home").addEventListener("click", () => { setPicking(false); saveHome(null); HOME = {...DEFAULT_HOME}; drawHome(); render(); });
+map.on("click", ev => {
+  if(!picking) return;
+  HOME = {lat:+ev.latlng.lat.toFixed(4), lon:+ev.latlng.lng.toFixed(4), name:"我的位置"};
+  saveHome(HOME); setPicking(false); drawHome(); render();
+});
+
+function filtered(){
+  const cut = period==="all" ? 0 : Date.now() - (+period)*3600e3;
+  return events.filter(e => e.time >= cut && rank(e.maxi) >= minInt);
+}
+
+function popupHtml(e){
+  return `<b>${esc(e.anm||"震源不明")}</b><br>${fmt.format(e.time)}（${ago(e.time)}）<br>`+
+    `${magText(e.mag)} · ${depthText(e.loc.depth)} · 最大震度 ${LABEL[e.maxi]||"–"}<br>距${esc(HOME.name)}约 ${Math.round(e.dist)} km`;
+}
+
+function render(){
+  for(const e of events) e.dist = km(HOME, e.loc);
+  const list = filtered();
+  quakeLayer.clearLayers(); markers.clear();
+  const drawOrder = [...list].sort((a,b)=> rank(a.maxi)-rank(b.maxi) || a.time-b.time);
+  for(const e of drawOrder){
+    const m = +e.mag;
+    const r = isNaN(m) ? 5 : Math.max(4, 3 + m*2.4);
+    const c = L.circleMarker([e.loc.lat,e.loc.lon],{radius:r,color:"#222",weight:.8,fillColor:COLOR[e.maxi]||"#9aa5b1",fillOpacity:.88})
+      .bindPopup(popupHtml(e));
+    c.addTo(quakeLayer); markers.set(e.eid,c);
+  }
+  if(list.length){
+    const latest = list[0];
+    L.marker([latest.loc.lat,latest.loc.lon],{icon:L.divIcon({className:"",html:'<div class="pulse"></div>',iconSize:[18,18],iconAnchor:[9,9]}),interactive:false,keyboard:false}).addTo(quakeLayer);
+  }
+
+  // stats
+  $("s-count").textContent = list.length;
+  const top = list.reduce((a,b)=> (!a || rank(b.maxi)>rank(a.maxi)) ? b : a, null);
+  const big = list.reduce((a,b)=> (!a || (+b.mag||0)>(+a.mag||0)) ? b : a, null);
+  $("s-maxi").textContent = top ? "震度"+(LABEL[top.maxi]||"–") : "–";
+  $("s-maxi-at").textContent = top ? top.anm : "最大震度";
+  $("s-mag").textContent = big && !isNaN(+big.mag) ? magText(big.mag) : "–";
+  $("s-mag-at").textContent = big ? big.anm : "最大震级";
+  $("s-near").textContent = list.filter(e=>e.dist<=100).length;
+
+  // list
+  const ul = $("list");
+  ul.textContent = "";
+  if(!list.length){
+    const li=document.createElement("li"); li.className="empty";
+    li.textContent = events.length ? "这个范围内没有符合条件的地震。换一个时间范围或震度试试。" : "暂时没有数据。";
+    ul.appendChild(li); return;
+  }
+  for(const e of list){
+    const li = document.createElement("li");
+    li.tabIndex = 0;
+    if(freshIds.has(e.eid)) li.className = "fresh";
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    chip.style.background = COLOR[e.maxi] || "#9aa5b1";
+    chip.style.color = DARKTEXT.has(e.maxi) ? "#1a1a1a" : "#fff";
+    chip.textContent = LABEL[e.maxi] || "–";
+    chip.title = "最大震度";
+    const mid = document.createElement("div"); mid.style.minWidth="0";
+    const p = document.createElement("div"); p.className="place"; p.textContent = e.anm || "震源不明";
+    const meta = document.createElement("div"); meta.className="meta";
+    meta.textContent = `${fmt.format(e.time)} · ${ago(e.time)} · 距${HOME.name}${Math.round(e.dist)}km`;
+    mid.append(p,meta);
+    const mg = document.createElement("div"); mg.className="mag";
+    mg.textContent = magText(e.mag);
+    const sm = document.createElement("small"); sm.textContent = depthText(e.loc.depth); mg.appendChild(sm);
+    li.append(chip,mid,mg);
+    const go = () => { map.flyTo([e.loc.lat,e.loc.lon], Math.max(map.getZoom(),8), {duration:.8}); const mk=markers.get(e.eid); if(mk) setTimeout(()=>mk.openPopup(),850); };
+    li.addEventListener("click", go);
+    li.addEventListener("keydown", ev => { if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); go(); }});
+    ul.appendChild(li);
+  }
+}
+
+async function load(){
+  try{
+    const res = await fetch(SRC + "?t=" + Date.now(), {cache:"no-store"});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const next = toEvents(await res.json());
+    if(seen){ for(const e of next) if(!seen.has(e.eid)) freshIds.add(e.eid); }
+    seen = new Set(next.map(e=>e.eid));
+    const sig = next.map(e=>e.eid+e.maxi+e.mag).join("|");
+    const changed = sig !== lastSig;
+    lastSig = sig;
+    events = next;
+    $("dot").classList.remove("err");
+    $("status").textContent = (freshIds.size ? `有${freshIds.size}次新地震 · ` : "") + "更新于 " + fmtClock.format(new Date());
+    if(changed) render();
+  }catch(err){
+    $("dot").classList.add("err");
+    $("status").textContent = "无法读取气象厅数据，60秒后自动重试";
+    if(!events.length) render();
+  }
+}
+$("refresh").addEventListener("click", load);
+load();
+setInterval(load, 60000);
+setInterval(()=>{ if(events.length) render(); }, 5*60000);
+})();
+</script>
+</body>
+</html>
