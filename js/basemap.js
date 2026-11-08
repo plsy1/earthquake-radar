@@ -3,7 +3,7 @@
 // switched on and off. Aerial and terrain are raster tiles with the chosen vector
 // features drawn on top. If WebGL or the vector style is unavailable, the page
 // falls back to GSI's raster light/standard maps without feature switches.
-import { BASEMAPS, VECTOR_STYLE_URL } from "./config.js";
+import { BASEMAPS, VECTOR_LIBS, VECTOR_STYLE_URL } from "./config.js";
 
 const L = window.L;
 
@@ -108,6 +108,31 @@ function applyBase() {
   map.getContainer().classList.toggle("basemap-invert", BASEMAPS[current].invertDark);
 }
 
+// ---- loading the vector libraries on demand ----
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error("script " + src));
+    document.head.appendChild(s);
+  });
+}
+
+/** MapLibre CSS + JS, then PMTiles and the Leaflet bridge (which need MapLibre). */
+async function loadVectorLibs() {
+  if (window.maplibregl && window.pmtiles && L.maplibreGL) return;
+  const css = document.createElement("link");
+  css.rel = "stylesheet";
+  css.href = VECTOR_LIBS.css;
+  document.head.appendChild(css);
+  const style = fetch(VECTOR_STYLE_URL); // in parallel with the scripts
+  await loadScript(VECTOR_LIBS.maplibre);
+  await Promise.all([loadScript(VECTOR_LIBS.pmtiles), loadScript(VECTOR_LIBS.bridge)]);
+  return style;
+}
+
 // ---- public ----
 
 /** True when map features can be switched (vector tiles loaded). */
@@ -129,12 +154,14 @@ export async function initBasemap(leafletMap, key, initialFeatures) {
     if (low !== lowZoom) { lowZoom = low; applyBase(); }
   });
   try {
+    // The raster placeholder is already on screen; the vector map follows when ready.
+    const styleReq = await loadVectorLibs();
     const gl = window.maplibregl, pm = window.pmtiles;
     if (!gl || !pm || !L.maplibreGL) throw new Error("vector libraries missing");
     if (typeof gl.supported === "function" && !gl.supported()) throw new Error("no WebGL");
     const protocol = new pm.Protocol();
     gl.addProtocol("pmtiles", protocol.tile);
-    const res = await fetch(VECTOR_STYLE_URL);
+    const res = await (styleReq || fetch(VECTOR_STYLE_URL));
     if (!res.ok) throw new Error("style HTTP " + res.status);
     const style = await res.json();
     style.layers = style.layers.map((l) => ({ ...l, _group: groupOf(l) }));

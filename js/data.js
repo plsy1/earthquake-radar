@@ -74,7 +74,7 @@ const lpCache = new Map();
 /** Stations that reached long-period class 1+, with their Sva (cm/s) and intensity. */
 export function fetchLongPeriodDetail(file) {
   if (!lpCache.has(file)) {
-    const p = fetch(LP_BASE + file, { cache: "no-store" })
+    const p = fetch(LP_BASE + file) // report files never change: the HTTP cache is fine
       .then((res) => { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
       .then((d) => {
         const obs = d?.Body?.Intensity?.Observation;
@@ -129,7 +129,7 @@ const detailCache = new Map();
 /** Fetch and parse a detail file once; failed fetches are retried next time. */
 export function fetchDetail(file) {
   if (!detailCache.has(file)) {
-    const p = fetch(DETAIL_BASE + file, { cache: "no-store" })
+    const p = fetch(DETAIL_BASE + file) // report files never change: the HTTP cache is fine
       .then((res) => { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
       .then(parseDetail);
     p.catch(() => detailCache.delete(file));

@@ -1,0 +1,4 @@
+# Cloudflare Pages response headers.
+# Static data changes only with a deploy; let browsers keep it for a day.
+/data/*
+  Cache-Control: public, max-age=86400

@@ -86,7 +86,7 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 #list li:hover{background:var(--hover)}
 #list li.fresh .place::after{content:"新";margin-left:6px;font-size:11px;color:var(--panel);background:var(--accent);padding:0 5px;border-radius:4px;vertical-align:2px}
 .chip{width:40px;height:40px;border-radius:6px;display:grid;place-items:center;font:700 14px var(--f-body);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
-.place{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.place{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .meta{font:12px var(--f-data);color:var(--muted);font-variant-numeric:tabular-nums}
 .mag{font:600 15px var(--f-data);text-align:right;font-variant-numeric:tabular-nums}
 .mag small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
@@ -205,7 +205,7 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .alert:hover{background:var(--hover)}
 .alert-dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--ok)}
 .alert-k{color:var(--muted);white-space:nowrap}
-.alert-v{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alert-v{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .alert[data-level="unknown"] .alert-dot{background:var(--muted)}
 .alert[data-level="info"] .alert-dot{background:#38a6e0}
 .alert[data-level="amber"]{border-color:var(--amber-border);background:var(--amber-bg)}
@@ -234,7 +234,7 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .al-hist button{display:block;width:100%;text-align:left;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:transparent;cursor:pointer;margin-bottom:6px}
 .al-hist button[aria-pressed="true"]{border-color:var(--ink)}
 .al-hist button:hover{background:var(--hover)}
-.al-advice{margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--advice-bg);color:var(--advice-ink);font-weight:500}
+.al-advice{margin-top:8px;padding:8px 10px;border-radius:8px;background:var(--advice-bg);color:var(--advice-ink);font-weight:700}
 #shelter-type button{padding-inline:7px}
 
 /* ---- Leaflet controls, tooltips and popups follow the theme ---- */
@@ -250,3 +250,8 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .leaflet-tooltip-left:before{border-left-color:var(--panel)}
 .leaflet-tooltip-right:before{border-right-color:var(--panel)}
 .status .theme{margin-left:0}
+
+#list li.more{display:block;padding:10px 16px;cursor:default}
+#list li.more:hover{background:transparent}
+#list li.more button{width:100%;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:transparent;cursor:pointer}
+#list li.more button:hover{background:var(--hover)}

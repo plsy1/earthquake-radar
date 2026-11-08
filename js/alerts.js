@@ -83,7 +83,7 @@ const tsCache = new Map();
 /** Areas of one tsunami report with their category, expected height and first arrival. */
 export function fetchTsunamiDetail(file) {
   if (!tsCache.has(file)) {
-    const p = fetch(TSUNAMI_BASE + file, { cache: "no-store" })
+    const p = fetch(TSUNAMI_BASE + file) // report files never change: the HTTP cache is fine
       .then((res) => { if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
       .then((d) => {
         const items = d?.Body?.Tsunami?.Forecast?.Item || [];

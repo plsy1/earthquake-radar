@@ -14,7 +14,8 @@ import {
 } from "./map.js";
 import {
   applySourceUi, bindSegment, lpStationLine, pressSegment, renderAlertsBar, renderAlertsView, renderDetail, renderList, renderProfile, renderStats, setHomeLabel,
-  setHomeNote, setMapSettingsOpen, setPickButton, setStatus, showDetailView, showPanel, tooltipHtml, tsunamiAreaLabel,
+  refreshListTimes, setHomeNote, setMapSettingsOpen, setPickButton, setStatus, showDetailView, showPanel, tooltipHtml,
+  tsunamiAreaLabel,
   updateMapSummary,
 } from "./ui.js";
 import { USGS_DAYS, fetchUsgs } from "./usgs.js";
@@ -567,14 +568,32 @@ onLangChange(() => {
 
 $("refresh").addEventListener("click", () => { load(); loadAlerts(true); });
 loadAlerts(true);
-setInterval(loadAlerts, ALERTS_REFRESH_MS);
 load();
 
-// The JMA list and short USGS windows refresh every minute; a year of USGS data every 10 minutes.
-let lastAuto = 0;
-setInterval(() => {
-  const every = state.source === "usgs" && state.periodHours === "year" ? USGS_YEAR_REFRESH_MS : REFRESH_MS;
-  if (Date.now() - lastAuto >= every - 1000) { lastAuto = Date.now(); load(); }
-}, REFRESH_MS);
-// Refresh the "x minutes ago" labels even when no new data arrives.
-setInterval(() => { if (cur().events.length) render(); }, 5 * 60_000);
+// ---- refreshing ----
+// Nothing is fetched while the page is hidden (another tab, phone locked); coming back
+// refreshes at once. The JMA list and short USGS windows refresh every minute, a year
+// of USGS data every 10 minutes, alerts every minute (Nankai feed every 5).
+let lastAuto = Date.now();
+const dataEvery = () => (state.source === "usgs" && state.periodHours === "year" ? USGS_YEAR_REFRESH_MS : REFRESH_MS);
+function tick() {
+  if (document.hidden) return;
+  if (Date.now() - lastAuto >= dataEvery() - 1000) { lastAuto = Date.now(); load(); }
+  loadAlerts();
+}
+setInterval(tick, Math.min(REFRESH_MS, ALERTS_REFRESH_MS));
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  // Back from the background: refresh what is stale and the "x minutes ago" labels.
+  if (Date.now() - lastAuto >= REFRESH_MS) { lastAuto = Date.now(); load(); }
+  loadAlerts();
+  refreshTimes();
+});
+
+/** Only the relative times change between data updates, so only they are rewritten. */
+function refreshTimes() {
+  if (!cur().events.length) return;
+  refreshListTimes(state.home);
+  renderStats(visibleEvents(), state);
+}
+setInterval(() => { if (!document.hidden) refreshTimes(); }, 5 * 60_000);

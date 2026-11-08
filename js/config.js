@@ -94,6 +94,13 @@ export const TRENCH_LABELS = [
 // Terrain (colored elevation) has no sea tiles and starts at zoom 5, so it sits on the light map.
 const GSI = "https://cyberjapandata.gsi.go.jp/xyz/";
 export const VECTOR_STYLE_URL = "https://gsi-cyberjapan.github.io/optimal_bvmap/style/std.json";
+// Vector map libraries, loaded after the page is up (MapLibre first: the others build on it).
+export const VECTOR_LIBS = {
+  css: "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css",
+  maplibre: "https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js",
+  pmtiles: "https://cdn.jsdelivr.net/npm/pmtiles@3.2.1/dist/pmtiles.js",
+  bridge: "https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js",
+};
 export const BASEMAPS = {
   pale: { vector: true, invertDark: true, fallback: [{ url: GSI + "pale/{z}/{x}/{y}.png", maxNativeZoom: 18 }] },
   std: { vector: true, invertDark: true, fallback: [{ url: GSI + "std/{z}/{x}/{y}.png", maxNativeZoom: 18 }] },

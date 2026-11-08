@@ -2,6 +2,17 @@
 // language-dependent formatting of times, depths, magnitudes and place names.
 
 const LANGS = ["zh", "ja", "en"];
+// Japanese glyph forms need Japanese fonts; they are large, so load them only when used.
+const JA_FONTS = "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@700&display=swap";
+let jaFontsAdded = false;
+function ensureJapaneseFonts() {
+  if (jaFontsAdded) return;
+  jaFontsAdded = true;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = JA_FONTS;
+  document.head.appendChild(link);
+}
 const LANG_KEY = "quake-radar.lang";
 const HTML_LANG = { zh: "zh-CN", ja: "ja", en: "en" };
 const LOCALE = { zh: "zh-CN", ja: "ja-JP", en: "en-GB" };
@@ -19,6 +30,7 @@ const JMA_LINK = '<a href="https://www.jma.go.jp/bosai/map.html#contents=earthqu
 const STRINGS = {
   zh: {
     title: "震源速览",
+    showMore: "再显示 {n} 条（还有 {left} 条）",
     theme: "主题", themeAuto: "自动", themeLight: "浅色", themeDark: "深色",
     layerInundation: "海啸浸水设想", inKey: "海啸浸水深（m，设想的最大级别）", inNote: "部分都道府县没有数据；详细请看市町村的灾害地图。",
     shelters: "避难场所", shOff: "关闭", shQuake: "地震", shTsunami: "海啸", shFire: "大火", shFlood: "洪水",
@@ -157,6 +169,7 @@ const STRINGS = {
   },
   ja: {
     title: "地震レーダー",
+    showMore: "さらに {n} 件表示（残り {left} 件）",
     theme: "テーマ", themeAuto: "自動", themeLight: "ライト", themeDark: "ダーク",
     layerInundation: "津波浸水想定", inKey: "津波浸水深（m・想定最大クラス）", inNote: "一部の都道府県はデータがありません。詳しくは市町村のハザードマップを確認してください。",
     shelters: "避難場所", shOff: "非表示", shQuake: "地震", shTsunami: "津波", shFire: "大火事", shFlood: "洪水",
@@ -295,6 +308,7 @@ const STRINGS = {
   },
   en: {
     title: "Earthquake Radar",
+    showMore: "Show {n} more ({left} left)",
     theme: "Theme", themeAuto: "Auto", themeLight: "Light", themeDark: "Dark",
     layerInundation: "Tsunami inundation", inKey: "Tsunami inundation depth (m, max-class scenario)", inNote: "Some prefectures have no data; see your municipality's hazard map for details.",
     shelters: "Shelters", shOff: "Off", shQuake: "Quake", shTsunami: "Tsunami", shFire: "Fire", shFlood: "Flood",
@@ -469,6 +483,7 @@ export function t(key, vars) {
 
 /** Fill every element marked with data-i18n (text), data-i18n-html, -title or -aria. */
 export function applyStatic() {
+  if (lang === "ja") ensureJapaneseFonts();
   document.documentElement.lang = HTML_LANG[lang];
   document.title = t("title");
   for (const n of document.querySelectorAll("[data-i18n]")) n.textContent = t(n.dataset.i18n);

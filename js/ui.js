@@ -375,26 +375,81 @@ export function renderStats(list, { home, periodHours, minRank, minMag, source }
   }
 }
 
-export function renderList(list, { home, fresh, hasAny, onSelect }) {
+// ---- earthquake list ----
+// Long lists (USGS · 1 year has ~2000 rows) render in pages so the page stays responsive,
+// and one listener on the <ul> serves every row.
+
+const LIST_PAGE = 200;
+const listState = { items: [], byId: new Map(), shown: LIST_PAGE, onSelect: null, home: null, fresh: new Set(), bound: false };
+
+const metaText = (e, home) => `${fmtTime(e.time)} · ${ago(e.time)}` + (home ? t("listDist", { d: Math.round(e.dist) }) : "");
+
+function bindList() {
   const ul = $("list");
-  ul.textContent = "";
+  const pickRow = (ev) => {
+    const li = ev.target.closest("li[data-eid]");
+    return li && listState.byId.get(li.dataset.eid);
+  };
+  ul.addEventListener("click", (ev) => {
+    if (ev.target.closest("[data-more]")) { listState.shown += LIST_PAGE; paintList(); return; }
+    const e = pickRow(ev);
+    if (e) listState.onSelect(e);
+  });
+  ul.addEventListener("keydown", (ev) => {
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    const e = pickRow(ev);
+    if (e) { ev.preventDefault(); listState.onSelect(e); }
+  });
+  listState.bound = true;
+}
+
+export function renderList(list, { home, fresh, hasAny, onSelect }) {
+  if (!listState.bound) bindList();
+  Object.assign(listState, { items: list, home, fresh, onSelect, byId: new Map(list.map((e) => [e.eid, e])) });
+  // A shorter list (new filter) starts again from one page; a refresh keeps what was opened.
+  listState.shown = Math.max(LIST_PAGE, Math.min(listState.shown, list.length));
+  const ul = $("list");
   if (!list.length) {
+    ul.textContent = "";
     ul.appendChild(el("li", "empty", t(hasAny ? "emptyFiltered" : "emptyNone")));
     return;
   }
-  for (const e of list) ul.appendChild(listItem(e, home, fresh.has(e.eid), onSelect));
+  paintList();
 }
 
-function listItem(e, home, isFresh, onSelect) {
+function paintList() {
+  const { items, home, fresh, shown } = listState;
+  const frag = document.createDocumentFragment();
+  for (const e of items.slice(0, shown)) frag.appendChild(listItem(e, home, fresh.has(e.eid)));
+  if (items.length > shown) {
+    const li = el("li", "more");
+    const b = el("button", null, t("showMore", { n: Math.min(LIST_PAGE, items.length - shown), left: items.length - shown }));
+    b.type = "button";
+    b.dataset.more = "1";
+    li.appendChild(b);
+    frag.appendChild(li);
+  }
+  $("list").replaceChildren(frag);
+}
+
+/** Rewrite only the "x minutes ago" part of each visible row. */
+export function refreshListTimes(home) {
+  for (const meta of $("list").querySelectorAll("li[data-eid] .meta")) {
+    const e = listState.byId.get(meta.parentElement.parentElement.dataset.eid);
+    if (e) meta.textContent = metaText(e, home);
+  }
+}
+
+function listItem(e, home, isFresh) {
   const li = el("li", isFresh ? "fresh" : null);
   li.tabIndex = 0;
+  li.dataset.eid = e.eid;
 
   const chip = quakeChip(e);
   chip.title = e.source === "usgs" ? depthText(e.loc.depth) : t("chipTitle");
 
   const mid = el("div");
   mid.style.minWidth = "0";
-  const meta = `${fmtTime(e.time)} · ${ago(e.time)}` + (home ? t("listDist", { d: Math.round(e.dist) }) : "");
   const placeRow = el("div", "place-row");
   placeRow.appendChild(el("div", "place", placeName(e)));
   if (e.lg) {
@@ -403,16 +458,12 @@ function listItem(e, home, isFresh, onSelect) {
     badge.title = t("lpTitle");
     placeRow.appendChild(badge);
   }
-  mid.append(placeRow, el("div", "meta", meta));
+  mid.append(placeRow, el("div", "meta", metaText(e, home)));
 
   const mag = el("div", "mag", magText(e.mag));
   mag.appendChild(el("small", null, depthText(e.loc.depth)));
 
   li.append(chip, mid, mag);
-  li.addEventListener("click", () => onSelect(e));
-  li.addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); onSelect(e); }
-  });
   return li;
 }
 

@@ -5,11 +5,26 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>震源速览 · Earthquake Radar</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@700&display=swap">
+<!-- Japanese fonts are added by js/i18n.js only when Japanese is chosen. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;700&family=Noto+Serif+SC:wght@700&display=swap">
 <link rel="stylesheet" href="css/style.css">
+<!-- Fetch every module up front rather than as each import is discovered. -->
+<link rel="modulepreload" href="js/main.js">
+<link rel="modulepreload" href="js/alerts.js">
+<link rel="modulepreload" href="js/analysis.js">
+<link rel="modulepreload" href="js/basemap.js">
+<link rel="modulepreload" href="js/charts.js">
+<link rel="modulepreload" href="js/config.js">
+<link rel="modulepreload" href="js/data.js">
+<link rel="modulepreload" href="js/home.js">
+<link rel="modulepreload" href="js/i18n.js">
+<link rel="modulepreload" href="js/map.js">
+<link rel="modulepreload" href="js/nankai.js">
+<link rel="modulepreload" href="js/ui.js">
+<link rel="modulepreload" href="js/usgs.js">
+<link rel="modulepreload" href="js/util.js">
 <script>
   // Apply a saved light/dark choice before the page paints, so it doesn't flash.
   try { const th = localStorage.getItem("quake-radar.theme"); if (th === "light" || th === "dark") document.documentElement.dataset.theme = th; } catch (_) {}
@@ -193,10 +208,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<!-- Vector base map: MapLibre draws GSI's vector tiles (a PMTiles archive) inside Leaflet. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pmtiles@3.2.1/dist/pmtiles.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>
