@@ -69,10 +69,20 @@
             <button type="button" id="pick-home" aria-pressed="false">在地图上选择</button>
             <button type="button" id="reset-home" data-i18n="clear">清除</button>
           </div></div>
+        <div class="row"><span class="lbl" data-i18n="basemap">底图</span>
+          <div class="seg" id="basemap">
+            <button type="button" data-v="pale" aria-pressed="true" data-i18n="bmPale">淡色</button>
+            <button type="button" data-v="std" aria-pressed="false" data-i18n="bmStd">标准</button>
+            <button type="button" data-v="photo" aria-pressed="false" data-i18n="bmPhoto">航拍</button>
+            <button type="button" data-v="relief" aria-pressed="false" data-i18n="bmRelief">地形</button>
+          </div></div>
         <div class="row"><span class="lbl" data-i18n="layers">地图图层</span>
           <div class="layers">
             <label class="check"><input type="checkbox" id="nankai" checked> <span data-i18n="layerNankai">南海海槽设想震源区（示意）</span></label>
+            <label class="check"><input type="checkbox" id="segments"> <span data-i18n="layerSegments">南海海槽分区（历史破裂）</span></label>
             <label class="check"><input type="checkbox" id="plates"> <span data-i18n="layerPlates">板块边界</span></label>
+            <label class="check"><input type="checkbox" id="historic"> <span data-i18n="layerHistoric">历史大地震</span></label>
+            <label class="check"><input type="checkbox" id="heat"> <span data-i18n="layerHeat">地震密度热力图</span></label>
           </div></div>
       </div>
       <div id="overview" class="overview">

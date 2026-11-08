@@ -9,7 +9,7 @@
 }
 @media (prefers-color-scheme:dark){
   :root{--bg:#0d131a;--panel:#141c25;--ink:#e5ecf2;--muted:#8c9bac;--line:#253140;--hover:#1b2531;--accent:#ff5d50;--ok:#3cc483;color-scheme:dark}
-  .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.85)}
+  .basemap-invert .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.85)}
 }
 [hidden]{display:none!important}
 html,body{height:100%;margin:0}
@@ -115,3 +115,13 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .trench-label{font:italic 11px/1 var(--f-body);color:#9a3a22}
 @media (prefers-color-scheme:dark){.trench-label{color:#ff9a7a}}
 .legend .key{margin-top:6px;color:var(--muted);max-width:280px}
+
+/* ---- extra map layers ---- */
+.layers .check{font-size:13px}
+.segment-label{white-space:nowrap;pointer-events:none;font:600 12px/1.35 var(--f-body);color:var(--ink);text-shadow:0 0 3px var(--panel),0 0 3px var(--panel),0 0 3px var(--panel)}
+.hist{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.hist-dot{flex:none;width:12px;height:12px;border-radius:2px;transform:rotate(45deg);background:#fff;border:2.5px solid #5b2a86;box-sizing:border-box}
+.hist-year{font:600 11px/1 var(--f-data);color:#5b2a86;text-shadow:0 0 3px #fff,0 0 3px #fff}
+@media (prefers-color-scheme:dark){.hist-dot{border-color:#c9a7ff;background:#1b1430}.hist-year{color:#d9c2ff;text-shadow:0 0 3px #000,0 0 3px #000}}
+.hist-note{margin-top:6px;line-height:1.6}
+.hist-src{margin-top:4px;font-size:11px;color:var(--muted)}

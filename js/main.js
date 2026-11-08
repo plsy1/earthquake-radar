@@ -5,7 +5,8 @@ import { applyStatic, fmtClock, onLangChange, setLang, t } from "./i18n.js";
 import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
   drawHome, drawQuakes, drawStations, enterDetail, exitDetail, flyToView,
-  initMap, onMapClick, refreshMapLanguage, setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible,
+  initMap, onMapClick, refreshMapLanguage, setBasemap, setHeatPoints, setHeatVisible, setHistoricVisible,
+  setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible, setSegmentsVisible,
 } from "./map.js";
 import {
   applySourceUi, bindSegment, pressSegment, renderDetail, renderList, renderStats, setHomeLabel,
@@ -57,6 +58,7 @@ function render() {
   for (const e of f.events) e.dist = state.home ? km(state.home, e.loc) : null;
   const list = visibleEvents();
   drawQuakes(list, { tooltipFor: tooltipHtml, onSelect: openDetail });
+  setHeatPoints(list);
   renderStats(list, state);
   renderList(list, { home: state.home, fresh: f.fresh, hasAny: f.events.length > 0, onSelect: openDetail });
 }
@@ -211,10 +213,15 @@ $("view").addEventListener("click", (ev) => {
   if (b) flyToView(b.dataset.v, state.home);
 });
 $("nankai").addEventListener("change", (ev) => setNankaiVisible(ev.target.checked));
-$("plates").addEventListener("change", async (ev) => {
-  const ok = await setPlatesVisible(ev.target.checked);
-  if (!ok) ev.target.checked = false;
-});
+bindSegment("basemap", setBasemap);
+$("segments").addEventListener("change", (ev) => setSegmentsVisible(ev.target.checked));
+// Layers that load data on first use untick themselves if loading fails.
+for (const [id, show] of [["plates", setPlatesVisible], ["historic", setHistoricVisible], ["heat", setHeatVisible]]) {
+  $(id).addEventListener("change", async (ev) => {
+    const ok = await show(ev.target.checked);
+    if (!ok) ev.target.checked = false;
+  });
+}
 $("back").addEventListener("click", closeDetail);
 document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeDetail(); });
 

@@ -1,0 +1,140 @@
+{
+  "note": "Major damaging earthquakes in and around Japan since 1891. Epicenters, magnitudes and tolls are approximate, rounded from commonly cited JMA and historical figures. toll = dead and missing; tollPlus = 'more than', including disaster-related deaths.",
+  "events": [
+    {
+      "date": "1891-10-28", "lat": 35.6, "lon": 136.6, "mag": "8.0", "toll": 7273,
+      "name": { "zh": "浓尾地震", "ja": "濃尾地震", "en": "1891 Mino–Owari earthquake" },
+      "note": {
+        "zh": "日本内陆规模最大的直下型地震之一，岐阜、爱知受灾严重，根尾谷断层在地表出现错动。",
+        "ja": "日本の内陸で最大級の直下型地震。岐阜・愛知で大きな被害が出て、根尾谷断層が地表に現れた。",
+        "en": "One of Japan's largest inland earthquakes. Heavy damage in Gifu and Aichi; the Neodani fault broke the surface."
+      }
+    },
+    {
+      "date": "1896-06-15", "lat": 39.5, "lon": 144.0, "mag": "8.2", "toll": 22000,
+      "name": { "zh": "明治三陆地震", "ja": "明治三陸地震", "en": "1896 Meiji Sanriku earthquake" },
+      "note": {
+        "zh": "摇晃不算强烈，却引发巨大海啸袭击三陆沿岸，是典型的「海啸地震」。",
+        "ja": "揺れは比較的弱かったが、巨大な津波が三陸沿岸を襲った典型的な「津波地震」。",
+        "en": "Shaking was modest, but a huge tsunami struck the Sanriku coast: a classic \"tsunami earthquake\"."
+      }
+    },
+    {
+      "date": "1923-09-01", "lat": 35.33, "lon": 139.14, "mag": "7.9", "toll": 105000,
+      "name": { "zh": "关东大地震", "ja": "関東大震災（大正関東地震）", "en": "1923 Great Kanto earthquake" },
+      "note": {
+        "zh": "相模海槽的板块边界地震。东京、横滨发生大规模火灾，死亡大部分由火灾造成。",
+        "ja": "相模トラフのプレート境界地震。東京・横浜で大火災が発生し、犠牲者の多くは火災によるもの。",
+        "en": "A plate-boundary quake on the Sagami Trough. Most deaths came from the fires that swept Tokyo and Yokohama."
+      }
+    },
+    {
+      "date": "1933-03-03", "lat": 39.23, "lon": 144.52, "mag": "8.1", "toll": 3064,
+      "name": { "zh": "昭和三陆地震", "ja": "昭和三陸地震", "en": "1933 Showa Sanriku earthquake" },
+      "note": {
+        "zh": "发生在日本海沟外侧的太平洋板块内部，海啸再次袭击三陆沿岸。",
+        "ja": "日本海溝の外側、太平洋プレート内部で発生。津波が再び三陸沿岸を襲った。",
+        "en": "Occurred inside the Pacific Plate seaward of the Japan Trench; its tsunami again hit the Sanriku coast."
+      }
+    },
+    {
+      "date": "1944-12-07", "lat": 33.57, "lon": 136.18, "mag": "7.9", "toll": 1223,
+      "name": { "zh": "昭和东南海地震", "ja": "昭和東南海地震", "en": "1944 Tonankai earthquake" },
+      "note": {
+        "zh": "南海海槽东半部破裂。正值战争期间，受灾情况受到报道管制。",
+        "ja": "南海トラフの東半分が破壊。戦時中で被害は報道統制された。",
+        "en": "The eastern half of the Nankai Trough ruptured. Wartime censorship kept the damage quiet."
+      }
+    },
+    {
+      "date": "1945-01-13", "lat": 34.70, "lon": 137.11, "mag": "6.8", "toll": 2306,
+      "name": { "zh": "三河地震", "ja": "三河地震", "en": "1945 Mikawa earthquake" },
+      "note": {
+        "zh": "东南海地震约一个月后，在爱知县三河地区发生的内陆直下型地震。",
+        "ja": "東南海地震の約1か月後、愛知県三河地方で起きた内陸直下型地震。",
+        "en": "An inland quake in Aichi's Mikawa area about a month after the Tonankai earthquake."
+      }
+    },
+    {
+      "date": "1946-12-21", "lat": 32.94, "lon": 135.85, "mag": "8.0", "toll": 1443,
+      "name": { "zh": "昭和南海地震", "ja": "昭和南海地震", "en": "1946 Nankai earthquake" },
+      "note": {
+        "zh": "东南海地震约两年后，南海海槽西半部破裂，高知、和歌山等地受海啸袭击。",
+        "ja": "東南海地震の約2年後に南海トラフの西半分が破壊。高知・和歌山などを津波が襲った。",
+        "en": "About two years after Tonankai, the western half of the Nankai Trough ruptured; tsunamis hit Kochi and Wakayama."
+      }
+    },
+    {
+      "date": "1948-06-28", "lat": 36.17, "lon": 136.29, "mag": "7.1", "toll": 3769,
+      "name": { "zh": "福井地震", "ja": "福井地震", "en": "1948 Fukui earthquake" },
+      "note": {
+        "zh": "福井平原受灾惨重，次年气象厅因此新设了「震度7」。",
+        "ja": "福井平野で甚大な被害。これをきっかけに翌年「震度7」が新設された。",
+        "en": "Devastated the Fukui plain and led JMA to add intensity 7 to its scale the following year."
+      }
+    },
+    {
+      "date": "1993-07-12", "lat": 42.78, "lon": 139.18, "mag": "7.8", "toll": 230,
+      "name": { "zh": "北海道西南外海地震", "ja": "北海道南西沖地震", "en": "1993 Hokkaido Nansei-oki earthquake" },
+      "note": {
+        "zh": "海啸在几分钟内到达奥尻岛，并引发火灾。",
+        "ja": "津波が数分で奥尻島に到達し、火災も発生した。",
+        "en": "The tsunami reached Okushiri Island within minutes, and fires followed."
+      }
+    },
+    {
+      "date": "1995-01-17", "lat": 34.60, "lon": 135.04, "mag": "7.3", "maxInt": "7", "toll": 6437,
+      "name": { "zh": "阪神・淡路大地震", "ja": "阪神・淡路大震災（兵庫県南部地震）", "en": "1995 Great Hanshin (Kobe) earthquake" },
+      "note": {
+        "zh": "大城市正下方的直下型地震。经实地调查认定震度7，大量木造房屋倒塌。",
+        "ja": "大都市の直下で起きた地震。現地調査で震度7と認定され、多くの木造家屋が倒壊した。",
+        "en": "Struck directly beneath a major city. Intensity 7 was assigned after field surveys; many wooden houses collapsed."
+      }
+    },
+    {
+      "date": "2004-10-23", "lat": 37.29, "lon": 138.87, "mag": "6.8", "maxInt": "7", "toll": 68,
+      "name": { "zh": "新潟县中越地震", "ja": "新潟県中越地震", "en": "2004 Chuetsu earthquake" },
+      "note": {
+        "zh": "首次由地震计实测到震度7，山区发生大量滑坡。",
+        "ja": "震度計で初めて震度7を観測。山間部で多くの土砂災害が起きた。",
+        "en": "The first intensity 7 measured by an instrument; widespread landslides in the hills."
+      }
+    },
+    {
+      "date": "2011-03-11", "lat": 38.10, "lon": 142.86, "mag": "9.0", "maxInt": "7", "toll": 18400,
+      "name": { "zh": "东日本大地震", "ja": "東日本大震災（東北地方太平洋沖地震）", "en": "2011 Tohoku earthquake" },
+      "note": {
+        "zh": "日本观测史上最大的地震。日本海沟约500公里的板块边界破裂，巨大海啸造成大部分伤亡，并引发福岛第一核电站事故。",
+        "ja": "日本の観測史上最大の地震。日本海溝沿い約500kmが破壊し、巨大津波で多くの犠牲が出た。福島第一原発事故も起きた。",
+        "en": "The largest earthquake recorded in Japan. About 500 km of the Japan Trench ruptured; the tsunami caused most deaths and the Fukushima Daiichi accident."
+      }
+    },
+    {
+      "date": "2016-04-16", "lat": 32.75, "lon": 130.76, "mag": "7.3", "maxInt": "7", "tollPlus": 270,
+      "name": { "zh": "熊本地震", "ja": "熊本地震", "en": "2016 Kumamoto earthquake" },
+      "note": {
+        "zh": "4月14日的M6.5前震和16日的主震都测到震度7，两天内两次震度7。",
+        "ja": "4月14日の前震（M6.5）と16日の本震でいずれも震度7を観測。2日間で2度の震度7。",
+        "en": "Both the April 14 foreshock (M6.5) and the April 16 mainshock reached intensity 7, twice in two days."
+      }
+    },
+    {
+      "date": "2018-09-06", "lat": 42.69, "lon": 142.01, "mag": "6.7", "maxInt": "7", "toll": 43,
+      "name": { "zh": "北海道胆振东部地震", "ja": "北海道胆振東部地震", "en": "2018 Hokkaido Eastern Iburi earthquake" },
+      "note": {
+        "zh": "厚真町发生大规模山体滑坡，并导致北海道全境大停电。",
+        "ja": "厚真町で大規模な土砂崩れが発生し、北海道全域で停電（ブラックアウト）が起きた。",
+        "en": "Massive landslides in Atsuma, and a blackout across all of Hokkaido."
+      }
+    },
+    {
+      "date": "2024-01-01", "lat": 37.50, "lon": 137.27, "mag": "7.6", "maxInt": "7", "tollPlus": 500,
+      "name": { "zh": "能登半岛地震", "ja": "能登半島地震", "en": "2024 Noto Peninsula earthquake" },
+      "note": {
+        "zh": "元旦发生。海岸最大隆起约4米，轮岛市发生大规模火灾。",
+        "ja": "元日に発生。海岸が最大約4m隆起し、輪島市で大規模な火災が起きた。",
+        "en": "Struck on New Year's Day. The coast rose by up to about 4 m, and a large fire broke out in Wajima."
+      }
+    }
+  ]
+}

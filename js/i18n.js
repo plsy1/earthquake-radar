@@ -19,6 +19,11 @@ const JMA_LINK = '<a href="https://www.jma.go.jp/bosai/map.html#contents=earthqu
 const STRINGS = {
   zh: {
     title: "震源速览",
+    basemap: "底图", bmPale: "淡色", bmStd: "标准", bmPhoto: "航拍", bmRelief: "地形",
+    layerSegments: "南海海槽分区（历史破裂）", layerHistoric: "历史大地震", layerHeat: "地震密度热力图",
+    segNankai: "南海\n1707・1854・1946", segTonankai: "东南海\n1707・1854・1944", segTokai: "东海\n1707・1854（之后未破裂）",
+    histInt: "最大震度{v}", toll: "死亡・失踪 约{n}人", tollPlus: "死亡 {n}人以上（含灾害关联死）",
+    histApprox: "震央、震级和伤亡人数均为概略值",
     layers: "地图图层", layerNankai: "南海海槽设想震源区（示意）", layerPlates: "板块边界",
     platesKey: "板块边界：实线为俯冲带（海沟、海槽），虚线为其他边界",
     plPA: "太平洋板块", plPS: "菲律宾海板块", plOK: "鄂霍次克板块（北美板块）", plAM: "阿穆尔板块（欧亚板块）", plON: "冲绳板块",
@@ -100,6 +105,11 @@ const STRINGS = {
   },
   ja: {
     title: "地震レーダー",
+    basemap: "背景地図", bmPale: "淡色", bmStd: "標準", bmPhoto: "写真", bmRelief: "地形",
+    layerSegments: "南海トラフの区分（過去の破壊）", layerHistoric: "過去の大地震", layerHeat: "地震の密度（ヒートマップ）",
+    segNankai: "南海\n1707・1854・1946", segTonankai: "東南海\n1707・1854・1944", segTokai: "東海\n1707・1854（以降なし）",
+    histInt: "最大震度{v}", toll: "死者・行方不明 約{n}人", tollPlus: "死者 {n}人以上（災害関連死を含む）",
+    histApprox: "震央・規模・犠牲者数はいずれも概数です",
     layers: "地図レイヤー", layerNankai: "南海トラフ想定震源域（概略）", layerPlates: "プレート境界",
     platesKey: "プレート境界：実線は沈み込み帯（海溝・トラフ）、破線はその他の境界",
     plPA: "太平洋プレート", plPS: "フィリピン海プレート", plOK: "オホーツクプレート（北米プレート）", plAM: "アムールプレート（ユーラシアプレート）", plON: "沖縄プレート",
@@ -181,6 +191,11 @@ const STRINGS = {
   },
   en: {
     title: "Earthquake Radar",
+    basemap: "Base map", bmPale: "Light", bmStd: "Standard", bmPhoto: "Aerial", bmRelief: "Terrain",
+    layerSegments: "Nankai segments (past ruptures)", layerHistoric: "Historic earthquakes", layerHeat: "Earthquake density (heatmap)",
+    segNankai: "Nankai\n1707 · 1854 · 1946", segTonankai: "Tonankai\n1707 · 1854 · 1944", segTokai: "Tokai\n1707 · 1854 (none since)",
+    histInt: "max intensity {v}", toll: "About {n} dead or missing", tollPlus: "More than {n} deaths (incl. disaster-related)",
+    histApprox: "Epicenters, magnitudes and tolls are approximate",
     layers: "Map layers", layerNankai: "Nankai source region (approx.)", layerPlates: "Plate boundaries",
     platesKey: "Plate boundaries: solid = subduction (trench), dashed = other boundary",
     plPA: "Pacific Plate", plPS: "Philippine Sea Plate", plOK: "Okhotsk Plate (North American)", plAM: "Amur Plate (Eurasian)", plON: "Okinawa Plate",

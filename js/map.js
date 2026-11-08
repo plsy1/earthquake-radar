@@ -1,10 +1,10 @@
 // Leaflet map: base tiles, Nankai outline, home marker, earthquake circles.
 import {
-  COLOR, DARKTEXT, DEPTH_BANDS, NEAR_KM, ORDER, PLATE_LABELS, PLATES_URL, TILE_ATTRIBUTION_URL, TILE_URL,
-  TRENCH_LABELS, UNKNOWN_COLOR, VIEWS, depthBand,
+  BASEMAPS, COLOR, DARKTEXT, DEPTH_BANDS, HEAT_SCRIPT, HISTORIC_URL, NEAR_KM, ORDER, PLATE_LABELS, PLATES_URL,
+  TILE_ATTRIBUTION_URL, TRENCH_LABELS, UNKNOWN_COLOR, VIEWS, depthBand,
 } from "./config.js";
-import { intLabel, pick, placeName, t } from "./i18n.js";
-import { NANKAI } from "./nankai.js";
+import { getLang, intLabel, pick, placeName, t } from "./i18n.js";
+import { NANKAI, NANKAI_SEGMENTS, clipLon } from "./nankai.js";
 import { esc, rank } from "./util.js";
 
 const L = window.L;
@@ -12,6 +12,10 @@ let map, nankaiLayer, homeLayer, quakeLayer, detailLayer;
 let userMoved = false; // once true, resizes no longer refit the whole country
 let legendEl, legendSource = "jma", attribution = "";
 let platesLines = null, platesLabels = null, platesOn = false;
+let baseLayer = null;
+let segmentsLayer = null, segmentsOn = false;
+let historicData = null, historicLayer = null, historicOn = false;
+let heatLayer = null, heatOn = false, heatPoints = [];
 
 const attributionHtml = () => `<a href="${TILE_ATTRIBUTION_URL}" target="_blank" rel="noopener">${t("attribution")}</a>`;
 const swatch = (bg, dark, text, wide) =>
@@ -26,7 +30,7 @@ export const quakeColor = (e) => (e.source === "usgs" ? depthBand(e.loc.depth).c
 
 export function initMap(el) {
   map = L.map(el, { zoomControl: true, preferCanvas: true }).fitBounds(VIEWS.jp.bounds);
-  L.tileLayer(TILE_URL, { maxZoom: 18, minZoom: 4 }).addTo(map);
+  setBasemap("pale");
   attribution = attributionHtml();
   map.attributionControl.addAttribution(attribution);
 
@@ -34,7 +38,12 @@ export function initMap(el) {
     color: "#c8322b", weight: 1.5, dashArray: "6 5", fillColor: "#c8322b", fillOpacity: 0.07, interactive: false,
   }).addTo(map);
   // Plate lines and labels sit under the earthquake circles.
+  map.createPane("segments").style.zIndex = 340;
   map.createPane("plates").style.zIndex = 350;
+  map.createPane("historic").style.zIndex = 620;
+  // Segment names stay readable above the earthquake circles; they ignore the pointer.
+  map.createPane("topLabels").style.zIndex = 610;
+  map.getPane("topLabels").style.pointerEvents = "none";
   map.createPane("plateLabels").style.zIndex = 390;
   homeLayer = L.layerGroup().addTo(map);
   quakeLayer = L.layerGroup().addTo(map);
@@ -63,6 +72,122 @@ export function initMap(el) {
 export function setLegendSource(source) {
   legendSource = source;
   if (legendEl) legendEl.innerHTML = legendHtml();
+}
+
+// ---- base map ----
+
+export function setBasemap(key) {
+  const def = BASEMAPS[key] || BASEMAPS.pale;
+  if (baseLayer) map.removeLayer(baseLayer);
+  baseLayer = L.layerGroup(def.layers.map((l) => L.tileLayer(l.url, {
+    minZoom: 4, maxZoom: 18, maxNativeZoom: l.maxNativeZoom, minNativeZoom: l.minNativeZoom, opacity: l.opacity ?? 1,
+  }))).addTo(map);
+  // Only flat maps are inverted for dark mode; photos and terrain keep their colors.
+  map.getContainer().classList.toggle("basemap-invert", def.invertDark);
+}
+
+// ---- Nankai segments (1707 / 1854 / 1944–46 ruptures) ----
+
+function buildSegments() {
+  const g = L.layerGroup();
+  for (const s of NANKAI_SEGMENTS) {
+    L.polygon(clipLon(NANKAI, s.minLon, s.maxLon), {
+      pane: "segments", interactive: false, color: s.color, weight: 1.2, fillColor: s.color, fillOpacity: 0.2,
+    }).addTo(g);
+    L.marker(s.label, {
+      pane: "topLabels", interactive: false, keyboard: false,
+      icon: L.divIcon({ className: "segment-label", html: esc(t(s.key)).replace(/\n/g, "<br>"), iconSize: null, iconAnchor: [0, 0] }),
+    }).addTo(g);
+  }
+  return g;
+}
+
+export function setSegmentsVisible(on) {
+  segmentsOn = on;
+  if (segmentsLayer) map.removeLayer(segmentsLayer);
+  segmentsLayer = on ? buildSegments().addTo(map) : null;
+}
+
+// ---- historic earthquakes (static file, loaded on first use) ----
+
+function historicPopup(ev) {
+  const lang = getLang();
+  const nf = new Intl.NumberFormat(lang === "zh" ? "zh-CN" : lang === "ja" ? "ja-JP" : "en-GB");
+  const facts = [ev.date, "M" + ev.mag];
+  if (ev.maxInt) facts.push(t("histInt", { v: intLabel(ev.maxInt) }));
+  const toll = ev.tollPlus ? t("tollPlus", { n: nf.format(ev.tollPlus) }) : t("toll", { n: nf.format(ev.toll) });
+  return `<b>${esc(ev.name[lang] || ev.name.en)}</b><br>${esc(facts.join(" · "))}<br>${esc(toll)}` +
+    `<div class="hist-note">${esc(ev.note[lang] || ev.note.en)}</div><div class="hist-src">${esc(t("histApprox"))}</div>`;
+}
+
+function buildHistoric() {
+  const g = L.layerGroup();
+  for (const ev of historicData.events) {
+    const year = ev.date.slice(0, 4);
+    L.marker([ev.lat, ev.lon], {
+      pane: "historic", keyboard: true, title: ev.name[getLang()] || ev.name.en,
+      icon: L.divIcon({ className: "hist", html: `<span class="hist-dot"></span><span class="hist-year">${year}</span>`, iconSize: [16, 16], iconAnchor: [8, 8] }),
+    }).bindPopup(() => historicPopup(ev), { maxWidth: 280 }).addTo(g);
+  }
+  return g;
+}
+
+/** Show or hide historic earthquakes; resolves false if the data could not be loaded. */
+export async function setHistoricVisible(on) {
+  historicOn = on;
+  if (on && !historicData) {
+    try {
+      const res = await fetch(HISTORIC_URL);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      historicData = await res.json();
+    } catch (err) {
+      historicOn = false;
+      return false;
+    }
+  }
+  if (historicLayer) map.removeLayer(historicLayer);
+  historicLayer = historicOn ? buildHistoric().addTo(map) : null;
+  return true;
+}
+
+// ---- density heatmap (Leaflet.heat, loaded on first use) ----
+
+let heatScript = null;
+function loadHeatScript() {
+  if (!heatScript) {
+    heatScript = new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = HEAT_SCRIPT;
+      s.onload = () => resolve();
+      s.onerror = () => { heatScript = null; reject(new Error("heat script")); };
+      document.head.appendChild(s);
+    });
+  }
+  return heatScript;
+}
+
+/** Larger earthquakes count for more, but every event adds some heat. */
+const heatWeight = (e) => Math.min(1, 0.25 + Math.max(0, (+e.mag || 2) - 2) * 0.15);
+
+/** Points for the heatmap: whatever earthquakes are currently shown. */
+export function setHeatPoints(list) {
+  heatPoints = list.map((e) => [e.loc.lat, e.loc.lon, heatWeight(e)]);
+  if (heatLayer) heatLayer.setLatLngs(heatPoints);
+}
+
+/** Show or hide the heatmap; resolves false if the plugin could not be loaded. */
+export async function setHeatVisible(on) {
+  heatOn = on;
+  if (on && !heatLayer) {
+    try { await loadHeatScript(); } catch (err) { heatOn = false; return false; }
+    heatLayer = L.heatLayer(heatPoints, {
+      radius: 24, blur: 20, maxZoom: 9, minOpacity: 0.25,
+      gradient: { 0.3: "#2c7fb8", 0.55: "#ffd166", 0.8: "#f4762d", 1: "#c0262d" },
+    });
+  }
+  if (heatOn) heatLayer.addTo(map);
+  else if (heatLayer) map.removeLayer(heatLayer);
+  return true;
 }
 
 // ---- plate boundaries (loaded on first use) ----
@@ -116,6 +241,8 @@ export function refreshMapLanguage() {
     platesLabels = buildPlateLabels();
     if (platesOn) platesLabels.addTo(map);
   }
+  if (segmentsOn) setSegmentsVisible(true);
+  if (historicOn && historicData) setHistoricVisible(true);
   map.attributionControl.removeAttribution(attribution);
   attribution = attributionHtml();
   map.attributionControl.addAttribution(attribution);

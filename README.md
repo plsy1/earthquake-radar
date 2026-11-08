@@ -10,7 +10,9 @@
 - 点击列表或地图上的地震，可以看这次地震的详情：各观测点的震度分布图、按震度分组的市区町村、
   海啸说明，以及离"我的位置"最近的观测点测到的震度
 - 可以切换到 **USGS** 数据：包括无感地震和海上地震，可以看最近 1 年，按最小震级筛选，颜色表示震源深度
-- 可以叠加南海海槽巨大地震设想震源区的大致轮廓，以及板块边界（俯冲带、海沟名称和板块名称）
+- 地图图层：南海海槽设想震源区、南海海槽分区（1707 / 1854 / 1944・1946 的破裂历史）、
+  板块边界（俯冲带、海沟和板块名称）、1891 年以来的历史大地震、地震密度热力图
+- 底图可以在淡色、标准、航拍、地形（色别标高）之间切换
 - 界面支持中文、日本語、English，首次打开按浏览器语言自动选择，可以在右上角切换。
   英文界面使用气象厅提供的英文地名
 
@@ -41,6 +43,7 @@ js/ui.js          右侧面板：统计、列表、按钮
 js/home.js        "我的位置"的读取和保存
 js/nankai.js      南海海槽设想震源区的近似坐标
 data/plates.json  日本周边的板块边界（从 PB2002 裁剪）
+data/historic.json 历史大地震（震中、震级、伤亡人数、简介，三种语言）
 js/i18n.js        三种语言的界面文字，以及时间、深度、地名的本地化
 js/util.js        距离计算等通用小工具
 ```
@@ -56,6 +59,8 @@ Build command 留空，Build output directory 填 `/`。推送到 `main` 会自�
 - USGS 地震目录：[FDSN Event Web Service](https://earthquake.usgs.gov/fdsnws/event/1/)，日本周边大约 M4 以上较完整
 - 底图：[国土地理院 淡色地図](https://maps.gsi.go.jp/development/ichiran.html)
 - 地图库：[Leaflet](https://leafletjs.com/) 1.9.4
+
+历史大地震的震中、震级和伤亡人数是常见引用值的概数，仅供参考。热力图使用 [Leaflet.heat](https://github.com/Leaflet/Leaflet.heat)。
 
 板块边界来自 Bird, P. (2003) 的 PB2002 模型，经 [fraxen/tectonicplates](https://github.com/fraxen/tectonicplates)
 整理为 GeoJSON（Open Data Commons Attribution License），本仓库只保留了日本周边的部分。

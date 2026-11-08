@@ -58,5 +58,23 @@ export const TRENCH_LABELS = [
   { key: "trRyukyu", lat: 25.6, lon: 129.4 },
 ];
 
-export const TILE_URL = "https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png";
+// GSI base maps. Light and standard maps are inverted in dark mode; photos and terrain are not.
+// Terrain (colored elevation) has no sea tiles and starts at zoom 5, so it sits on the light map.
+const GSI = "https://cyberjapandata.gsi.go.jp/xyz/";
+export const BASEMAPS = {
+  pale: { layers: [{ url: GSI + "pale/{z}/{x}/{y}.png", maxNativeZoom: 18 }], invertDark: true },
+  std: { layers: [{ url: GSI + "std/{z}/{x}/{y}.png", maxNativeZoom: 18 }], invertDark: true },
+  photo: { layers: [{ url: GSI + "seamlessphoto/{z}/{x}/{y}.jpg", maxNativeZoom: 18 }], invertDark: false },
+  relief: {
+    layers: [
+      { url: GSI + "pale/{z}/{x}/{y}.png", maxNativeZoom: 18 },
+      { url: GSI + "relief/{z}/{x}/{y}.png", minNativeZoom: 5, maxNativeZoom: 15, opacity: 0.85 },
+    ],
+    invertDark: false,
+  },
+};
+
+// Historic earthquakes (static file) and the heatmap plugin, both loaded on first use.
+export const HISTORIC_URL = "data/historic.json";
+export const HEAT_SCRIPT = "https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js";
 export const TILE_ATTRIBUTION_URL = "https://maps.gsi.go.jp/development/ichiran.html";
