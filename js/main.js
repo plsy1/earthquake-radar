@@ -1,19 +1,20 @@
 // Entry point: holds page state and wires data, map and panel together.
 import { PROFILE_PRESETS, depthProfile, findAftershocks, profileBand } from "./analysis.js";
 import { fetchNankai, fetchTsunamiAreas, fetchTsunamiDetail, fetchTsunamiList } from "./alerts.js";
-import { ALERTS_REFRESH_MS, NANKAI_REFRESH_MS, REFRESH_MS, USGS_YEAR_REFRESH_MS } from "./config.js";
+import { ALERTS_REFRESH_MS, EEW_ALERT_KEY, NANKAI_REFRESH_MS, REFRESH_MS, USGS_YEAR_REFRESH_MS } from "./config.js";
+import { eewNow, eewState, isSignificant, onEewChange, runEewDemo, startEew } from "./eew.js";
 import { FEATURE_GROUPS, setBasemap, setFeatureVisible } from "./basemap.js";
 import { fetchDetail, fetchEvents, fetchLongPeriodDetail } from "./data.js";
 import { applyStatic, fmtClock, onLangChange, setLang, t } from "./i18n.js";
 import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
-  clearProfile, clearTsunami, drawAftershocks, drawHome, drawLongPeriod, drawProfile, drawTsunami, drawQuakes, drawStations, enterDetail, exitDetail,
-  fitProfile, flyToView, initMap, onMapClick, setViewChangeHandler, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
+  clearProfile, clearTsunami, drawAftershocks, drawEew, drawHome, drawLongPeriod, drawProfile, drawTsunami, drawQuakes, drawStations, enterDetail, exitDetail,
+  fitEew, fitProfile, tickEew, flyToView, initMap, onMapClick, setViewChangeHandler, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
   setInundationVisible, setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible, setProfileHandler,
   setSegmentsVisible, setShelterHandler, setShelterType,
 } from "./map.js";
 import {
-  applySourceUi, bindSegment, lpStationLine, pressSegment, renderAlertsBar, renderAlertsView, renderDetail, renderList, renderProfile, renderStats, setHomeLabel,
+  applySourceUi, bindSegment, eewSummary, fillEewSection, lpStationLine, renderEewBanner, renderEewPill, tickEewBanner, pressSegment, renderAlertsBar, renderAlertsView, renderDetail, renderList, renderProfile, renderStats, setHomeLabel,
   refreshListTimes, setHomeNote, setMapSettingsOpen, setPickButton, setStatus, showDetailView, showPanel, tooltipHtml,
   tsunamiAreaLabel,
   updateMapSummary,
@@ -192,7 +193,10 @@ function ensureTsunamiDetail(r) {
 function renderAlertsPanel() {
   const a = state.alerts, v = viewingReport();
   ensureTsunamiDetail(v);
-  renderAlertsView({ nankai: a.nankai, nankaiFailed: a.nankaiFailed, tsunami: a.tsunami, viewing: v, viewingDetail: v ? a.detail[v.eid] : null });
+  renderAlertsView({
+    nankai: a.nankai, nankaiFailed: a.nankaiFailed, tsunami: a.tsunami, viewing: v, viewingDetail: v ? a.detail[v.eid] : null,
+    eew: eewState(), eewOpts: eewOpts(),
+  });
 }
 
 /** A current tsunami report is always on the map; past ones only while viewed in the panel. */
@@ -215,7 +219,7 @@ function openAlerts(section) {
   showPanel("alerts-view");
   renderAlertsPanel();
   updateTsunamiMap();
-  document.getElementById(section === "tsunami" ? "al-tsunami" : "al-nankai")?.scrollIntoView({ block: "start" });
+  document.getElementById({ tsunami: "al-tsunami", eew: "al-eew" }[section] || "al-nankai")?.scrollIntoView({ block: "start" });
 }
 
 function closeAlerts() {
@@ -298,6 +302,7 @@ function setHome(home) {
   setHomeLabel(home);
   render();
   refreshDetail();
+  tickEewBanner(eewState().active, home, eewNow());
 }
 
 function setPicking(on) {
@@ -466,7 +471,16 @@ document.addEventListener("keydown", (ev) => {
 $("alert-nankai").addEventListener("click", () => openAlerts("nankai"));
 $("alert-tsunami").addEventListener("click", () => openAlerts("tsunami"));
 $("alerts-back").addEventListener("click", closeAlerts);
+$("alert-eew").addEventListener("click", () => {
+  const ev = eewState().active;
+  if (ev && ev.hypo && !ev.cancel) fitEew(ev, state.home);
+  else openAlerts("eew");
+});
+$("alerts-body").addEventListener("change", (ev) => {
+  if (ev.target.matches('input[data-eew="alert"]')) setEewAlert(ev.target.checked);
+});
 $("alerts-body").addEventListener("click", (ev) => {
+  if (ev.target.closest('button[data-eew="demo"]')) { unlockAudio(); runEewDemo(); return; }
   const b = ev.target.closest("button[data-eid]");
   if (!b) return;
   state.alerts.viewingEid = b.dataset.eid;
@@ -568,7 +582,101 @@ onLangChange(() => {
   paintAlerts();
   updateTsunamiMap();
   showShelterStatus();
+  paintEew(eewState());
 });
+
+// ---- earthquake early warning ----
+// Reports arrive over WebSocket (see eew.js). A warning, or a forecast of intensity 4 or
+// more, moves the map to the epicenter once and, if the viewer turned it on, sounds an
+// alert and shows a desktop notification while the page is in the background.
+
+let eewAlertOn = false;
+try { eewAlertOn = localStorage.getItem(EEW_ALERT_KEY) === "1"; } catch (_) { /* off */ }
+const eewOpts = () => ({ alertOn: eewAlertOn, permission: "Notification" in window ? Notification.permission : "unsupported" });
+
+let audio = null;
+/** Browsers allow sound only after the viewer has interacted with the page. */
+function unlockAudio() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!audio && AC) audio = new AC();
+  if (audio && audio.state === "suspended") audio.resume();
+}
+document.addEventListener("pointerdown", () => { if (eewAlertOn) unlockAudio(); }, { passive: true });
+
+/** Two-tone chime: three times for a warning, once for a forecast. */
+function chime(level) {
+  if (!audio || audio.state !== "running") return;
+  const t0 = audio.currentTime + 0.02;
+  const notes = level >= 2 ? [0, 0.5, 1.0].flatMap((d) => [[988, d], [784, d + 0.18]]) : [[784, 0], [988, 0.2]];
+  for (const [freq, at] of notes) {
+    const osc = audio.createOscillator(), gain = audio.createGain();
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t0 + at);
+    gain.gain.exponentialRampToValueAtTime(0.25, t0 + at + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + at + 0.16);
+    osc.connect(gain).connect(audio.destination);
+    osc.start(t0 + at);
+    osc.stop(t0 + at + 0.2);
+  }
+}
+
+function setEewAlert(on) {
+  eewAlertOn = on;
+  try { if (on) localStorage.setItem(EEW_ALERT_KEY, "1"); else localStorage.removeItem(EEW_ALERT_KEY); } catch (_) { /* not remembered */ }
+  if (on) {
+    unlockAudio();
+    setTimeout(() => chime(1), 50); // let the viewer hear what it sounds like
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission().then(() => paintEew(eewState()), () => {});
+    }
+  }
+  paintEew(eewState());
+}
+
+function eewAlert(ev, level) {
+  if (!eewAlertOn) return;
+  chime(level);
+  if (document.hidden && "Notification" in window && Notification.permission === "granted") {
+    try {
+      new Notification(t(ev.warn ? "eewTitleWarn" : "eewTitleForecast"), { body: eewSummary(ev), tag: "eew-" + ev.id, renotify: true });
+    } catch (_) { /* some mobile browsers only allow notifications from a service worker */ }
+  }
+}
+
+const eewLevel = (ev) => (!ev || ev.cancel ? 0 : ev.warn ? 2 : isSignificant(ev) ? 1 : 0);
+const eewHandled = new Map(); // event id → highest level already acted on
+let eewTimer = 0;
+
+function paintEew(st) {
+  const ev = st.active;
+  renderEewPill(st, isSignificant(ev));
+  drawEew(ev);
+  renderEewBanner(ev, state.home, eewNow());
+  if (state.alerts.open) fillEewSection($("al-eew"), st, eewOpts());
+  if (ev && !eewTimer) eewTimer = setInterval(eewFrame, 200);
+  if (!ev && eewTimer) { clearInterval(eewTimer); eewTimer = 0; }
+}
+
+function eewFrame() {
+  const now = eewNow(), ev = eewState().active;
+  tickEew(now);
+  tickEewBanner(ev, state.home, now);
+}
+
+onEewChange((st) => {
+  paintEew(st);
+  const ev = st.active;
+  if (!ev) return;
+  const level = eewLevel(ev), before = eewHandled.get(ev.id) ?? -1;
+  if (level <= before) return;
+  eewHandled.set(ev.id, level);
+  if (level >= 1) {
+    if (ev.hypo && !ev.assumed) fitEew(ev, state.home);
+    eewAlert(ev, level);
+  }
+});
+startEew();
+if (new URLSearchParams(location.search).has("eewdemo")) setTimeout(runEewDemo, 1500);
 
 $("refresh").addEventListener("click", () => { load(); loadAlerts(true); });
 loadAlerts(true);

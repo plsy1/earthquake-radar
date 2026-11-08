@@ -16,6 +16,16 @@ export const TSUNAMI_PAGE = "https://www.jma.go.jp/bosai/map.html#contents=tsuna
 export const NANKAI_FEED = "https://www.data.jma.go.jp/developer/xml/feed/eqvol_l.xml";
 export const NANKAI_PAGE = "https://www.jma.go.jp/jma/kishou/know/jishin/nteq/index.html";
 export const ALERTS_REFRESH_MS = 60_000;
+
+// Earthquake Early Warnings (緊急地震速報), relayed live by two free, unofficial services.
+// P2P地震情報 pushes warnings (警報) only; Wolfx pushes every forecast (予報) and warning.
+export const EEW_P2P_WS = "wss://api.p2pquake.net/v2/ws";
+export const EEW_P2P_LAST = "https://api.p2pquake.net/v2/history?codes=556&limit=1";
+export const EEW_WOLFX_WS = "wss://ws-api.wolfx.jp/jma_eew";
+export const EEW_WOLFX_LAST = "https://api.wolfx.jp/jma_eew.json";
+export const EEW_ALERT_KEY = "quake-radar.eewAlert";
+// Typical P and S wave speeds near Japan (km/s), for wave fronts and arrival estimates.
+export const VP = 7, VS = 4;
 export const NANKAI_REFRESH_MS = 5 * 60_000;
 // Designated emergency evacuation sites (GSI). One GeoJSON file per hazard type, only at zoom 10.
 export const SHELTER_URL = "https://cyberjapandata.gsi.go.jp/xyz/skhb{type}/10/{x}/{y}.geojson";

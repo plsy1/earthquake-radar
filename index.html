@@ -18,6 +18,7 @@
 <link rel="modulepreload" href="js/charts.js">
 <link rel="modulepreload" href="js/config.js">
 <link rel="modulepreload" href="js/data.js">
+<link rel="modulepreload" href="js/eew.js">
 <link rel="modulepreload" href="js/home.js">
 <link rel="modulepreload" href="js/i18n.js">
 <link rel="modulepreload" href="js/map.js">
@@ -53,6 +54,9 @@
   </header>
   <!-- Nankai Trough special information and tsunami status; each opens the alerts panel. -->
   <div class="alerts" id="alerts">
+    <button type="button" class="alert" id="alert-eew" data-level="unknown">
+      <span class="alert-dot" aria-hidden="true"></span><span class="alert-k" data-i18n="eewLabel">地震预警</span><span class="alert-v" id="eew-text">…</span>
+    </button>
     <button type="button" class="alert" id="alert-nankai" data-level="calm">
       <span class="alert-dot" aria-hidden="true"></span><span class="alert-k" data-i18n="nkLabel">南海海槽临时情报</span><span class="alert-v" id="nankai-text">…</span>
     </button>

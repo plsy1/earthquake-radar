@@ -1,8 +1,8 @@
 // Side panel: status line, controls, summary numbers, earthquake list, detail.
 import {
-  COLOR, DARKTEXT, LP_COLOR, LP_PAGE, NANKAI_PAGE, NEAR_KM, NEARBY_STATION_KM, ORDER, TSUNAMI_PAGE, UNKNOWN_COLOR, depthBand,
+  COLOR, DARKTEXT, LP_COLOR, LP_PAGE, NANKAI_PAGE, NEAR_KM, NEARBY_STATION_KM, ORDER, TSUNAMI_PAGE, UNKNOWN_COLOR, VS, depthBand,
 } from "./config.js";
-import { ago, depthText, fmtTime, intLabel, magText, pick, placeName, t } from "./i18n.js";
+import { ago, depthText, fmtClock, fmtTime, intLabel, magText, pick, placeName, t } from "./i18n.js";
 import { mtChart, profileChart } from "./charts.js";
 import { $, esc, km, rank } from "./util.js";
 
@@ -514,9 +514,15 @@ function link(text, href) {
  * Alerts panel. `viewing` is the tsunami report shown in full, `viewingDetail`
  * its parsed areas (or {loading}/{failed}).
  */
-export function renderAlertsView({ nankai, nankaiFailed, tsunami, viewing, viewingDetail }) {
+export function renderAlertsView({ nankai, nankaiFailed, tsunami, viewing, viewingDetail, eew, eewOpts }) {
   const body = $("alerts-body");
   body.textContent = "";
+
+  // Earthquake early warning
+  const ew = el("section", "note al-sec");
+  ew.id = "al-eew";
+  body.appendChild(ew);
+  if (eew) fillEewSection(ew, eew, eewOpts);
 
   // Nankai Trough
   const nk = el("section", "note al-sec");
@@ -601,3 +607,164 @@ export function renderAlertsView({ nankai, nankaiFailed, tsunami, viewing, viewi
 /** Tooltip for a tsunami area on the map. */
 export const tsunamiAreaLabel = (a) =>
   [pick(a.name, a.nameEn), t(a.key), a.height ? t("tsHeight", { h: fmtHeight(a.height) }) : ""].filter(Boolean).join(" · ");
+
+// ---- earthquake early warning (緊急地震速報) ----
+
+const eewIntText = (a) => {
+  if (!a.from) return a.to && a.to !== "over" ? intLabel(a.to) : "?";
+  if (a.to === "over") return t("eewOrMore", { int: intLabel(a.from) });
+  return a.to && a.to !== a.from ? `${intLabel(a.from)}～${intLabel(a.to)}` : intLabel(a.from);
+};
+const eewKindKey = (ev) => (ev.cancel ? "eewCancelled" : ev.warn ? "eewWarn" : "eewForecast");
+const eewPlace = (ev) => ev.hypo?.name || t("unknownPlace");
+
+/** One line: place, magnitude and the largest forecast intensity. */
+export const eewSummary = (ev) => [
+  eewPlace(ev), ev.mag != null ? magText(ev.mag) : "", ev.maxIntAll ? t("eewMax", { int: intLabel(ev.maxIntAll) }) : "",
+].filter(Boolean).join(" · ");
+
+/** The alerts-bar pill: connection state, or the warning being shown. */
+export function renderEewPill(st, significant) {
+  const pill = $("alert-eew"), text = $("eew-text");
+  const ev = st.active;
+  if (ev) {
+    pill.dataset.level = ev.cancel ? "calm" : ev.warn ? "red" : significant ? "amber" : "info";
+    text.textContent = `${t(eewKindKey(ev))} · ${eewSummary(ev)}`;
+    return;
+  }
+  const s = Object.values(st.status);
+  if (s.includes("open")) { pill.dataset.level = "calm"; text.textContent = t("eewIdle"); }
+  else if (s.includes("connecting")) { pill.dataset.level = "unknown"; text.textContent = t("eewConnecting"); }
+  else { pill.dataset.level = "unknown"; text.textContent = t("eewOffline"); }
+}
+
+// The banner can be closed; it comes back when a report raises the level (forecast → warning).
+const eewDismissed = new Map(); // event id → level when closed
+const eewBannerLevel = (ev) => (ev.cancel ? 0 : ev.warn ? 2 : 1);
+let eewBannerBound = false;
+
+/** The banner on the map for the warning being shown (null hides it). */
+export function renderEewBanner(ev, home, now) {
+  const box = $("eew-banner");
+  if (!box) return;
+  if (!eewBannerBound) {
+    eewBannerBound = true;
+    box.addEventListener("click", (e) => {
+      if (!e.target.closest(".eew-close")) return;
+      const id = box.dataset.id;
+      if (id) eewDismissed.set(id, +box.dataset.level);
+      box.hidden = true;
+    });
+  }
+  const dismissed = ev && eewDismissed.has(ev.id) && eewDismissed.get(ev.id) >= eewBannerLevel(ev);
+  if (!ev || dismissed) { box.hidden = true; box.dataset.id = ""; return; }
+  box.hidden = false;
+  box.dataset.id = ev.id;
+  box.dataset.level = eewBannerLevel(ev);
+  box.dataset.kind = ev.cancel ? "cancel" : ev.warn ? "warn" : "forecast";
+  box.textContent = "";
+
+  const head = el("div", "eew-head");
+  head.append(el("span", "eew-kind", t(eewKindKey(ev))), el("b", null, t(ev.warn ? "eewTitleWarn" : "eewTitleForecast")));
+  if (ev.serial) head.appendChild(el("span", "eew-serial", t(ev.final ? "eewFinal" : "eewSerial", { n: ev.serial })));
+  if (ev.demo) head.appendChild(el("span", "eew-demo", t("eewDemo")));
+  const close = el("button", "eew-close", "×");
+  close.type = "button";
+  close.setAttribute("aria-label", t("eewClose"));
+  head.appendChild(close);
+  box.appendChild(head);
+
+  const body = el("div", "eew-body");
+  const top = el("div", "eew-top");
+  if (ev.maxIntAll) top.appendChild(chipEl(ev.maxIntAll, "chip big"));
+  const what = el("div");
+  what.append(
+    el("div", "eew-place", eewPlace(ev)),
+    el("div", "facts", [ev.mag != null ? magText(ev.mag) : "", ev.hypo ? depthText(ev.hypo.depth) : ""].filter(Boolean).join(" · ")),
+  );
+  if (ev.maxIntAll) what.appendChild(el("div", "facts", t("eewMax", { int: intLabel(ev.maxIntAll) })));
+  top.appendChild(what);
+  body.appendChild(top);
+  const elapsed = el("div", "eew-time");
+  elapsed.dataset.role = "elapsed";
+  const homeLine = el("div", "eew-home");
+  homeLine.dataset.role = "home";
+  body.append(elapsed, homeLine);
+  if (ev.assumed) body.appendChild(el("div", "eew-note", t("eewAssumed")));
+  if (ev.areas.length) {
+    const areas = [...ev.areas].sort((a, b) => (ORDER.indexOf(b.from) - ORDER.indexOf(a.from)));
+    const shown = areas.slice(0, 6).map((a) => `${a.name} ${eewIntText(a)}`).join(" · ");
+    body.appendChild(el("div", "eew-areas", t("eewAreas", { list: shown }) + (areas.length > 6 ? " " + t("eewMore", { n: areas.length - 6 }) : "")));
+  }
+  body.appendChild(el("div", "eew-disc", t("eewDisclaimer")));
+  box.appendChild(body);
+  tickEewBanner(ev, home, now);
+}
+
+/** Refresh the parts of the banner that change by the second. */
+export function tickEewBanner(ev, home, now) {
+  const box = $("eew-banner");
+  if (!ev || !box || box.hidden || box.dataset.id !== ev.id) return;
+  const elapsed = box.querySelector('[data-role="elapsed"]'), homeLine = box.querySelector('[data-role="home"]');
+  if (ev.origin) elapsed.textContent = t("eewOrigin", { time: fmtClock(ev.origin), s: Math.max(0, Math.round((now - ev.origin) / 1000)) });
+  if (ev.cancel) { homeLine.textContent = ""; homeLine.dataset.state = ""; return; }
+  if (!home) { homeLine.textContent = t("eewHomeNone"); homeLine.dataset.state = "none"; return; }
+  if (!ev.hypo || ev.assumed || !ev.origin) { homeLine.textContent = ""; homeLine.dataset.state = ""; return; }
+  const d = km(home, ev.hypo);
+  const sAt = +ev.origin + (Math.hypot(d, ev.hypo.depth ?? 10) / VS) * 1000;
+  const left = Math.round((sAt - now) / 1000);
+  homeLine.textContent = left > 0 ? t("eewHomeS", { s: left, d: Math.round(d) }) : t("eewHomeArrived", { d: Math.round(d) });
+  homeLine.dataset.state = left > 0 ? "coming" : "arrived";
+}
+
+const EEW_STATUS_KEY = { open: "eewConnOpen", connecting: "eewConnConnecting", closed: "eewConnClosed" };
+
+/**
+ * The early-warning section of the alerts panel: connections, the latest report,
+ * the alert switch and a demo button. `opts`: { alertOn, permission }.
+ */
+export function fillEewSection(sec, st, { alertOn, permission }) {
+  if (!sec) return;
+  sec.textContent = "";
+  sec.appendChild(el("h3", null, t("eewSectionTitle")));
+  const ev = st.active;
+  const state = el("span", "al-state", ev ? `${t(eewKindKey(ev))} · ${eewSummary(ev)}` : t("eewIdle"));
+  state.dataset.level = ev ? (ev.cancel ? "calm" : ev.warn ? "red" : "amber") : "calm";
+  sec.appendChild(state);
+
+  const conns = el("ul", "eew-conns");
+  for (const [name, key] of [["p2p", "eewSrcP2p"], ["wolfx", "eewSrcWolfx"]]) {
+    const li = el("li");
+    const dot = el("span", "alert-dot");
+    li.dataset.state = st.status[name];
+    li.append(dot, el("span", null, `${t(key)}：${t(EEW_STATUS_KEY[st.status[name]] || "eewConnClosed")}`));
+    conns.appendChild(li);
+  }
+  sec.appendChild(conns);
+
+  const last = st.latest;
+  sec.appendChild(el("div", "chart-cap", last
+    ? t("eewLatest", { time: fmtTime(last.announced), kind: t(eewKindKey(last)), what: eewSummary(last) })
+    : t("eewNoneYet")));
+
+  const label = el("label", "check eew-toggle");
+  const box = el("input");
+  box.type = "checkbox";
+  box.checked = alertOn;
+  box.dataset.eew = "alert";
+  label.append(box, document.createTextNode(" " + t("eewAlertToggle")));
+  sec.appendChild(label);
+  sec.appendChild(el("div", "chart-cap", t("eewAlertNote")));
+  if (alertOn && permission === "denied") sec.appendChild(el("div", "chart-cap", t("eewNotifyDenied")));
+
+  const demo = el("button", "eew-demo-btn", t("eewDemoBtn"));
+  demo.type = "button";
+  demo.dataset.eew = "demo";
+  demo.disabled = st.demo;
+  sec.appendChild(demo);
+
+  sec.appendChild(el("div", "al-text", t("eewAbout")));
+  sec.appendChild(el("div", "al-text", t("eewDisclaimerLong")));
+  sec.appendChild(link("P2P地震情報", "https://www.p2pquake.net/"));
+  sec.appendChild(link("Wolfx Project", "https://wolfx.jp/"));
+}
