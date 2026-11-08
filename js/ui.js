@@ -1,5 +1,7 @@
 // Side panel: status line, controls, summary numbers, earthquake list, detail.
-import { COLOR, DARKTEXT, LP_COLOR, LP_PAGE, NEAR_KM, NEARBY_STATION_KM, ORDER, UNKNOWN_COLOR, depthBand } from "./config.js";
+import {
+  COLOR, DARKTEXT, LP_COLOR, LP_PAGE, NANKAI_PAGE, NEAR_KM, NEARBY_STATION_KM, ORDER, TSUNAMI_PAGE, UNKNOWN_COLOR, depthBand,
+} from "./config.js";
 import { ago, depthText, fmtTime, intLabel, magText, pick, placeName, t } from "./i18n.js";
 import { mtChart, profileChart } from "./charts.js";
 import { $, esc, km, rank } from "./util.js";
@@ -84,9 +86,9 @@ export function tooltipHtml(e) {
   }) + (e.lg ? ` · ${esc(t("lpBadge", { v: e.lg }))}` : "");
 }
 
-/** Show one of the side panel's views: the list, one earthquake's detail, or the depth profile. */
+/** Show one of the side panel's views: the list, one earthquake's detail, the depth profile or alerts. */
 export function showPanel(name) {
-  for (const id of ["overview", "detail", "profile"]) $(id).hidden = id !== name;
+  for (const id of ["overview", "detail", "profile", "alerts-view"]) $(id).hidden = id !== name;
   if (name !== "overview") $(name).scrollTop = 0;
 }
 export const showDetailView = (on) => showPanel(on ? "detail" : "overview");
@@ -413,3 +415,128 @@ function listItem(e, home, isFresh, onSelect) {
   });
   return li;
 }
+
+// ---- alerts: Nankai Trough information and tsunami ----
+
+const TS_LEVEL = { 4: "purple", 3: "red", 2: "amber", 1: "info", 0: "calm" };
+const tsKindKey = (rank) => ["tsNoneKind", "tsForecast", "tsAdvisory", "tsWarning", "tsMajor"][rank] || "tsNoneKind";
+const fmtHeight = (h) => (/^[<>]?\d/.test(h) ? `${h} m` : h);
+
+/** The two chips under the header. `tsunami` is the list from fetchTsunamiList(). */
+export function renderAlertsBar({ nankai, nankaiFailed, tsunami, tsunamiFailed }) {
+  const nb = $("alert-nankai"), tb = $("alert-tsunami");
+  if (nankaiFailed && !nankai) { nb.dataset.level = "unknown"; $("nankai-text").textContent = t("nkFailed"); }
+  else if (!nankai) { nb.dataset.level = "unknown"; $("nankai-text").textContent = "…"; }
+  else if (nankai.latest) {
+    nb.dataset.level = nankai.latest.level;
+    $("nankai-text").textContent = `${t(nankai.latest.state)} · ${fmtTime(nankai.latest.time)}`;
+  } else { nb.dataset.level = "calm"; $("nankai-text").textContent = t("nkNone", { d: nankai.sinceDays }); }
+
+  const cur = (tsunami || []).find((r) => r.current);
+  if (tsunamiFailed && !tsunami) { tb.dataset.level = "unknown"; $("tsunami-text").textContent = t("tsFailed"); }
+  else if (!tsunami) { tb.dataset.level = "unknown"; $("tsunami-text").textContent = "…"; }
+  else if (cur) {
+    tb.dataset.level = TS_LEVEL[cur.rank];
+    $("tsunami-text").textContent = `${t(tsKindKey(cur.rank))} · ${t("tsAreas", { n: cur.areas })}`;
+  } else { tb.dataset.level = "calm"; $("tsunami-text").textContent = t("tsNone"); }
+}
+
+function link(text, href) {
+  const p = el("div", "lp-link");
+  const a = el("a", null, text + " ↗");
+  a.href = href; a.target = "_blank"; a.rel = "noopener";
+  p.appendChild(a);
+  return p;
+}
+
+/**
+ * Alerts panel. `viewing` is the tsunami report shown in full, `viewingDetail`
+ * its parsed areas (or {loading}/{failed}).
+ */
+export function renderAlertsView({ nankai, nankaiFailed, tsunami, viewing, viewingDetail }) {
+  const body = $("alerts-body");
+  body.textContent = "";
+
+  // Nankai Trough
+  const nk = el("section", "note al-sec");
+  nk.id = "al-nankai";
+  nk.appendChild(el("h3", null, t("nkLabel")));
+  if (!nankai) {
+    nk.appendChild(el("div", null, t(nankaiFailed ? "nkFailed" : "loadingList")));
+  } else if (nankai.latest) {
+    const st = el("span", "al-state", t(nankai.latest.state));
+    st.dataset.level = nankai.latest.level;
+    nk.append(st, el("div", "chart-cap", t("nkLatest", { time: fmtTime(nankai.latest.time) })));
+    if (nankai.latest.text) nk.appendChild(el("div", "al-text", nankai.latest.text));
+    nk.appendChild(el("div", "al-text", t("nkDesc" + nankai.latest.state)));
+  } else {
+    const st = el("span", "al-state", t("nkNone", { d: nankai.sinceDays }));
+    st.dataset.level = "calm";
+    nk.append(st, el("div", "al-text", t("nkNoneLong", { d: nankai.sinceDays })));
+  }
+  if (nankai?.explain) nk.appendChild(el("div", "chart-cap", t("nkExplain", { time: fmtTime(nankai.explain.time) })));
+  nk.appendChild(el("div", "al-text", t("nkAbout")));
+  if (nankai) nk.appendChild(el("div", "chart-cap", t("nkFeedNote", { d: nankai.sinceDays })));
+  nk.appendChild(link(t("nkLink"), NANKAI_PAGE));
+  body.appendChild(nk);
+
+  // Tsunami
+  const ts = el("section", "note al-sec");
+  ts.id = "al-tsunami";
+  const cur = (tsunami || []).find((r) => r.current);
+  ts.appendChild(el("h3", null, t(cur ? "tsCurrentTitle" : "tsLatestTitle")));
+  if (!cur) {
+    const st = el("span", "al-state", t("tsNone"));
+    st.dataset.level = "calm";
+    ts.appendChild(st);
+  }
+  if (viewing) {
+    const head = el("div", "al-text", t("tsReportHead", { place: placeName(viewing), mag: viewing.mag ? "M" + viewing.mag : "", time: fmtTime(viewing.time) }));
+    const st = el("span", "al-state", t(tsKindKey(viewing.rank)));
+    st.dataset.level = TS_LEVEL[viewing.rank];
+    ts.append(head, st);
+    if (!viewingDetail || viewingDetail.loading) ts.appendChild(el("div", null, t("tsLoading")));
+    else if (viewingDetail.failed) ts.appendChild(el("div", null, t("tsDetailFailed")));
+    else {
+      const d = viewingDetail.data;
+      const comment = pick(d.comment, d.commentEn);
+      if (comment) ts.appendChild(el("div", "al-text", comment));
+      const ul = el("ul", "al-areas");
+      for (const a of d.areas) {
+        const li = el("li");
+        const sw = el("span", "al-swatch");
+        sw.style.background = a.color;
+        const parts = [pick(a.name, a.nameEn), t(a.key)];
+        if (a.height) parts.push(t("tsHeight", { h: fmtHeight(a.height) }));
+        if (a.arrival) parts.push(t("tsArrival", { t: fmtTime(a.arrival) }));
+        else if (a.arrivalNote) parts.push(a.arrivalNote);
+        li.append(sw, el("span", null, parts.join(" · ")));
+        ul.appendChild(li);
+      }
+      ts.appendChild(ul);
+    }
+    if (viewing.current && viewing.rank >= 2) ts.appendChild(el("div", "al-advice", t("tsAdvice")));
+  }
+  // History
+  ts.appendChild(el("div", "lp-sub", t("tsHistory")));
+  if (!tsunami || !tsunami.length) ts.appendChild(el("div", "chart-cap", t("tsHistoryEmpty")));
+  else {
+    const ul = el("ul", "al-hist");
+    for (const r of tsunami) {
+      const li = el("li");
+      const b = el("button", null, `${fmtTime(r.time)} · ${placeName(r)} · ${t(tsKindKey(r.rank))} · ${t("tsAreas", { n: r.areas })}`);
+      b.type = "button";
+      b.dataset.eid = r.eid;
+      b.setAttribute("aria-pressed", String(viewing?.eid === r.eid));
+      li.appendChild(b);
+      ul.appendChild(li);
+    }
+    ts.appendChild(ul);
+  }
+  ts.appendChild(link(t("tsLink"), TSUNAMI_PAGE));
+  body.appendChild(ts);
+}
+
+/** Tooltip for a tsunami area on the map. */
+export const tsunamiAreaLabel = (a) =>
+  [pick(a.name, a.nameEn), t(a.key), a.height ? t("tsHeight", { h: fmtHeight(a.height) }) : ""].filter(Boolean).join(" · ");

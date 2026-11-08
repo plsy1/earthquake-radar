@@ -1,18 +1,20 @@
 // Entry point: holds page state and wires data, map and panel together.
 import { PROFILE_PRESETS, depthProfile, findAftershocks, profileBand } from "./analysis.js";
-import { REFRESH_MS, USGS_YEAR_REFRESH_MS } from "./config.js";
+import { fetchNankai, fetchTsunamiAreas, fetchTsunamiDetail, fetchTsunamiList } from "./alerts.js";
+import { ALERTS_REFRESH_MS, NANKAI_REFRESH_MS, REFRESH_MS, USGS_YEAR_REFRESH_MS } from "./config.js";
 import { FEATURE_GROUPS, setBasemap, setFeatureVisible } from "./basemap.js";
 import { fetchDetail, fetchEvents, fetchLongPeriodDetail } from "./data.js";
 import { applyStatic, fmtClock, onLangChange, setLang, t } from "./i18n.js";
 import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
-  clearProfile, drawAftershocks, drawHome, drawLongPeriod, drawProfile, drawQuakes, drawStations, enterDetail, exitDetail,
+  clearProfile, clearTsunami, drawAftershocks, drawHome, drawLongPeriod, drawProfile, drawTsunami, drawQuakes, drawStations, enterDetail, exitDetail,
   fitProfile, flyToView, initMap, onMapClick, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
   setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible, setProfileHandler, setSegmentsVisible,
 } from "./map.js";
 import {
-  applySourceUi, bindSegment, lpStationLine, pressSegment, renderDetail, renderList, renderProfile, renderStats, setHomeLabel,
-  setHomeNote, setMapSettingsOpen, setPickButton, setStatus, showDetailView, showPanel, tooltipHtml, updateMapSummary,
+  applySourceUi, bindSegment, lpStationLine, pressSegment, renderAlertsBar, renderAlertsView, renderDetail, renderList, renderProfile, renderStats, setHomeLabel,
+  setHomeNote, setMapSettingsOpen, setPickButton, setStatus, showDetailView, showPanel, tooltipHtml, tsunamiAreaLabel,
+  updateMapSummary,
 } from "./ui.js";
 import { USGS_DAYS, fetchUsgs } from "./usgs.js";
 import { $, km, rank } from "./util.js";
@@ -42,6 +44,12 @@ const state = {
   selected: null,      // eid of the earthquake shown in the detail panel
   // Depth profile: line A→B, half-width of the band, chosen preset, and "A"/"B" while drawing.
   profile: { open: false, A: null, B: null, widthKm: 100, preset: null, picking: null },
+  // Nankai Trough information and tsunami reports; `detail` caches tsunami reports by event id.
+  alerts: {
+    nankai: null, nankaiFailed: false, nankaiAt: 0,
+    tsunami: null, tsunamiFailed: false,
+    open: false, viewingEid: null, detail: {},
+  },
 };
 
 const cur = () => state.feeds[state.source];
@@ -108,6 +116,7 @@ async function openDetail(e) {
   // While a point is being picked on the map, clicks on circles belong to the picking.
   if (state.picking || state.profile.picking) return;
   closeProfile();
+  closeAlerts();
   state.selected = e.eid;
   showDetailView(true);
   enterDetail(e);
@@ -143,6 +152,78 @@ function refreshDetail({ stations = false } = {}) {
   paintDetail(ctx);
 }
 
+// ---- alerts: Nankai Trough information and tsunami ----
+
+async function loadAlerts(force = false) {
+  const a = state.alerts;
+  const jobs = [fetchTsunamiList().then((l) => { a.tsunami = l; a.tsunamiFailed = false; }, () => { a.tsunamiFailed = true; })];
+  // The Nankai feed is ~180 KB, so it refreshes less often than the small tsunami list.
+  if (force || Date.now() - a.nankaiAt > NANKAI_REFRESH_MS) {
+    jobs.push(fetchNankai().then((n) => { a.nankai = n; a.nankaiFailed = false; a.nankaiAt = Date.now(); }, () => { a.nankaiFailed = true; }));
+  }
+  await Promise.all(jobs);
+  paintAlerts();
+  updateTsunamiMap();
+}
+
+function paintAlerts() {
+  renderAlertsBar(state.alerts);
+  if (state.alerts.open) renderAlertsPanel();
+}
+
+/** The tsunami report shown in the panel: the one clicked, else the current one, else the newest. */
+function viewingReport() {
+  const a = state.alerts, list = a.tsunami || [];
+  return list.find((r) => r.eid === a.viewingEid) || list.find((r) => r.current) || list[0] || null;
+}
+
+function ensureTsunamiDetail(r) {
+  const a = state.alerts;
+  if (!r || a.detail[r.eid]) return;
+  a.detail[r.eid] = { loading: true };
+  fetchTsunamiDetail(r.file).then(
+    (data) => { a.detail[r.eid] = { data }; paintAlerts(); updateTsunamiMap(); },
+    () => { a.detail[r.eid] = { failed: true }; paintAlerts(); },
+  );
+}
+
+function renderAlertsPanel() {
+  const a = state.alerts, v = viewingReport();
+  ensureTsunamiDetail(v);
+  renderAlertsView({ nankai: a.nankai, nankaiFailed: a.nankaiFailed, tsunami: a.tsunami, viewing: v, viewingDetail: v ? a.detail[v.eid] : null });
+}
+
+/** A current tsunami report is always on the map; past ones only while viewed in the panel. */
+async function updateTsunamiMap() {
+  const a = state.alerts, list = a.tsunami || [];
+  const target = a.open ? viewingReport() : list.find((r) => r.current);
+  if (!target || target.rank === 0) { clearTsunami(); return; }
+  ensureTsunamiDetail(target);
+  const det = a.detail[target.eid];
+  if (!det?.data) { clearTsunami(); return; } // drawn when the report arrives
+  try { drawTsunami(det.data.areas, await fetchTsunamiAreas(), tsunamiAreaLabel); } catch (err) { clearTsunami(); }
+}
+
+function openAlerts(section) {
+  closeDetail();
+  closeProfile();
+  const a = state.alerts;
+  a.open = true;
+  a.viewingEid = null;
+  showPanel("alerts-view");
+  renderAlertsPanel();
+  updateTsunamiMap();
+  document.getElementById(section === "tsunami" ? "al-tsunami" : "al-nankai")?.scrollIntoView({ block: "start" });
+}
+
+function closeAlerts() {
+  const a = state.alerts;
+  if (!a.open) return;
+  a.open = false;
+  showPanel("overview");
+  updateTsunamiMap();
+}
+
 // ---- depth profile ----
 
 function renderProfilePanel() {
@@ -176,6 +257,7 @@ function usePreset(key) {
 
 function openProfile() {
   closeDetail();
+  closeAlerts();
   setPicking(false);
   state.profile.open = true;
   showPanel("profile");
@@ -360,6 +442,18 @@ document.addEventListener("keydown", (ev) => {
   if (state.profile.picking) { setProfilePicking(null); renderProfilePanel(); return; }
   closeDetail();
   closeProfile();
+  closeAlerts();
+});
+
+$("alert-nankai").addEventListener("click", () => openAlerts("nankai"));
+$("alert-tsunami").addEventListener("click", () => openAlerts("tsunami"));
+$("alerts-back").addEventListener("click", closeAlerts);
+$("alerts-body").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-eid]");
+  if (!b) return;
+  state.alerts.viewingEid = b.dataset.eid;
+  renderAlertsPanel();
+  updateTsunamiMap();
 });
 
 setProfileHandler(() => (state.profile.open ? closeProfile() : openProfile()));
@@ -437,9 +531,13 @@ onLangChange(() => {
   showStatus();
   render();
   refreshDetail({ stations: true });
+  paintAlerts();
+  updateTsunamiMap();
 });
 
-$("refresh").addEventListener("click", load);
+$("refresh").addEventListener("click", () => { load(); loadAlerts(true); });
+loadAlerts(true);
+setInterval(loadAlerts, ALERTS_REFRESH_MS);
 load();
 
 // The JMA list and short USGS windows refresh every minute; a year of USGS data every 10 minutes.

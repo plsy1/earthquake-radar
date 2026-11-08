@@ -15,7 +15,7 @@
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--f-body)}
 button{font:inherit;color:inherit}
-.app{display:grid;grid-template-rows:auto minmax(0,1fr);height:100%}
+.app{display:grid;grid-template-rows:auto auto minmax(0,1fr);height:100%}
 header{display:flex;align-items:baseline;gap:6px 16px;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
 h1{font:700 22px/1.2 var(--f-display);margin:0;letter-spacing:.04em}
 .sub{color:var(--muted);font-size:13px}
@@ -180,3 +180,42 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .lp-stations{margin:2px 0 0;padding-left:1.2em;font-size:12px;line-height:1.7}
 .lp-link{margin-top:6px}
 .lp-mark{display:grid;place-items:center;width:18px;height:18px;border-radius:4px;color:#fff;font:700 11px/1 var(--f-data);box-shadow:0 0 0 2px #fff}
+
+/* ---- alerts bar and panel: Nankai Trough information, tsunami ---- */
+.alerts{display:flex;flex-wrap:wrap;gap:6px 10px;padding-block:6px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line)}
+.alert{display:flex;align-items:center;gap:8px;font-size:13px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;cursor:pointer;max-width:100%}
+.alert:hover{background:var(--hover)}
+.alert-dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--ok)}
+.alert-k{color:var(--muted);white-space:nowrap}
+.alert-v{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alert[data-level="unknown"] .alert-dot{background:var(--muted)}
+.alert[data-level="info"] .alert-dot{background:#38a6e0}
+.alert[data-level="amber"]{border-color:#e0a100;background:#fff6d6}
+.alert[data-level="amber"] .alert-dot{background:#e0a100}
+.alert[data-level="red"]{border-color:#d7261e;background:#d7261e;color:#fff}
+.alert[data-level="red"] .alert-k{color:#ffe1de}
+.alert[data-level="red"] .alert-dot{background:#fff}
+.alert[data-level="purple"]{border-color:#8a00b8;background:#8a00b8;color:#fff}
+.alert[data-level="purple"] .alert-k{color:#f1d6ff}
+.alert[data-level="purple"] .alert-dot{background:#fff}
+@media (prefers-color-scheme:dark){.alert[data-level="amber"]{background:#3a2f0a;border-color:#c99400}}
+@media (prefers-reduced-motion:no-preference){.alert[data-level="red"] .alert-dot,.alert[data-level="purple"] .alert-dot{animation:blink 1.2s steps(2,start) infinite}}
+@keyframes blink{to{visibility:hidden}}
+.al-sec{white-space:normal}
+.al-sec h3{font:700 15px/1.4 var(--f-display);margin:0 0 4px}
+.al-state{display:inline-block;padding:2px 9px;border-radius:6px;font-weight:600;margin:2px 0 6px}
+.al-state[data-level="calm"]{background:var(--hover)}
+.al-state[data-level="amber"]{background:#ffe9a8;color:#5a4300}
+.al-state[data-level="red"]{background:#d7261e;color:#fff}
+.al-state[data-level="purple"]{background:#8a00b8;color:#fff}
+.al-state[data-level="info"]{background:#d9effa;color:#0c4a6e}
+.al-text{white-space:pre-line;font-size:13px;margin:4px 0}
+.al-areas{list-style:none;margin:6px 0 0;padding:0;font-size:13px}
+.al-areas li{display:grid;grid-template-columns:12px minmax(0,1fr);gap:8px;align-items:start;padding:3px 0}
+.al-swatch{width:12px;height:12px;border-radius:3px;margin-top:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2)}
+.al-hist{list-style:none;margin:6px 0 0;padding:0}
+.al-hist button{display:block;width:100%;text-align:left;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:transparent;cursor:pointer;margin-bottom:6px}
+.al-hist button[aria-pressed="true"]{border-color:var(--ink)}
+.al-hist button:hover{background:var(--hover)}
+.al-advice{margin-top:8px;padding:8px 10px;border-radius:8px;background:#ffe1de;color:#5c0d08;font-weight:500}
+@media (prefers-color-scheme:dark){.al-advice{background:#4a1512;color:#ffd6d1}.al-state[data-level="amber"]{background:#5a4300;color:#ffe9a8}.al-state[data-level="info"]{background:#0c3a52;color:#d9effa}}

@@ -18,6 +18,7 @@ let historicData = null, historicLayer = null, historicOn = false;
 let heatLayer = null, heatOn = false, heatPoints = [];
 let afterLayer = null, afterRenderer = null;   // aftershocks of the selected earthquake
 let lpLayer = null;                             // long-period ground motion stations
+let tsunamiLayer = null, tsunamiRenderer = null, tsunamiOn = false;
 let profileLayer = null, profileBtn = null;     // depth profile line and its map button
 
 const attributionHtml = () => `<a href="${TILE_ATTRIBUTION_URL}" target="_blank" rel="noopener">${t("attribution")}</a>`;
@@ -26,7 +27,8 @@ const swatch = (bg, dark, text, wide) =>
 const legendHtml = () => (legendSource === "usgs"
   ? esc(t("legendDepth")) + '<div class="scale">' + DEPTH_BANDS.map((b) => swatch(b.color, b.dark, b.label, true)).join("") + "</div>"
   : esc(t("legend")) + '<div class="scale">' + ORDER.map((k) => swatch(COLOR[k], DARKTEXT.has(k), intLabel(k))).join("") + "</div>")
-  + (platesOn ? `<div class="key">${esc(t("platesKey"))}</div>` : "");
+  + (platesOn ? `<div class="key">${esc(t("platesKey"))}</div>` : "")
+  + (tsunamiOn ? `<div class="key">${esc(t("tsKey"))}</div>` : "");
 
 /** Circle color: JMA events by max intensity, USGS events by depth. */
 export const quakeColor = (e) => (e.source === "usgs" ? depthBand(e.loc.depth).color : COLOR[e.maxi] || UNKNOWN_COLOR);
@@ -50,6 +52,10 @@ export function initMap(el, { basemap, features }) {
   afterRenderer = L.canvas({ pane: "aftershocks" });
   afterLayer = L.layerGroup();
   lpLayer = L.layerGroup();
+  // Tsunami coastlines sit above everything drawn on canvas so warnings stand out.
+  map.createPane("tsunami").style.zIndex = 470;
+  tsunamiRenderer = L.canvas({ pane: "tsunami" });
+  tsunamiLayer = L.layerGroup().addTo(map);
   profileLayer = L.layerGroup().addTo(map);
   // Segment names stay readable above the earthquake circles; they ignore the pointer.
   map.createPane("topLabels").style.zIndex = 610;
@@ -347,6 +353,31 @@ export function exitDetail() {
   map.removeLayer(lpLayer);
   lpLayer.clearLayers();
   quakeLayer.addTo(map);
+}
+
+/**
+ * Color the coastline of each tsunami forecast area by its category.
+ * `areas` come from fetchTsunamiDetail(), `shapes` from fetchTsunamiAreas().
+ */
+export function drawTsunami(areas, shapes, labelFor) {
+  tsunamiLayer.clearLayers();
+  const byCode = new Map(areas.map((a) => [a.code, a]));
+  for (const f of shapes.features) {
+    const a = byCode.get(String(f.properties.code));
+    if (!a || a.rank === 0) continue;
+    L.geoJSON(f, {
+      renderer: tsunamiRenderer,
+      style: { color: a.color, weight: a.rank >= 2 ? 7 : 5, opacity: 0.95, lineCap: "round", lineJoin: "round" },
+    }).bindTooltip(esc(labelFor(a)), { sticky: true }).addTo(tsunamiLayer);
+  }
+  tsunamiOn = tsunamiLayer.getLayers().length > 0;
+  if (legendEl) legendEl.innerHTML = legendHtml();
+}
+
+export function clearTsunami() {
+  tsunamiLayer.clearLayers();
+  tsunamiOn = false;
+  if (legendEl) legendEl.innerHTML = legendHtml();
 }
 
 /** Stations that reached long-period class 1+, as numbered squares above the intensity dots. */

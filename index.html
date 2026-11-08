@@ -27,6 +27,15 @@
       </div>
     </div>
   </header>
+  <!-- Nankai Trough special information and tsunami status; each opens the alerts panel. -->
+  <div class="alerts" id="alerts">
+    <button type="button" class="alert" id="alert-nankai" data-level="calm">
+      <span class="alert-dot" aria-hidden="true"></span><span class="alert-k" data-i18n="nkLabel">南海海槽临时情报</span><span class="alert-v" id="nankai-text">…</span>
+    </button>
+    <button type="button" class="alert" id="alert-tsunami" data-level="calm">
+      <span class="alert-dot" aria-hidden="true"></span><span class="alert-k" data-i18n="tsLabel">海啸</span><span class="alert-v" id="tsunami-text">…</span>
+    </button>
+  </div>
   <div class="main">
     <div id="map" role="region" data-i18n-aria="mapAria" aria-label="地震分布地图"></div>
     <aside>
@@ -126,6 +135,13 @@
           <span class="lbl" id="detail-hint">地图上的圆点是各观测点，红叉是震央</span>
         </div>
         <div id="detail-body"></div>
+      </section>
+      <section id="alerts-view" class="detail" hidden aria-live="polite">
+        <div class="detail-bar">
+          <button type="button" id="alerts-back" data-i18n="back">← 返回列表</button>
+          <span class="lbl" data-i18n="alertsTitle">警报与临时情报</span>
+        </div>
+        <div id="alerts-body"></div>
       </section>
       <section id="profile" class="detail" hidden aria-live="polite">
         <div class="detail-bar">

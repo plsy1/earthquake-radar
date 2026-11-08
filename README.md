@@ -10,6 +10,9 @@
 - 点击列表或地图上的地震，可以看这次地震的详情：各观测点的震度分布图、按震度分组的市区町村、
   海啸说明，以及离"我的位置"最近的观测点测到的震度
 - 可以切换到 **USGS** 数据：包括无感地震和海上地震，可以看最近 1 年，按最小震级筛选，颜色表示震源深度
+- **南海海槽临时情报・海啸**：标题下方一直显示两项状态。南海海槽地震临时情报（巨大地震警戒／注意／调查中／调查结束）
+  来自气象厅防灾信息 XML（约最近7天）；海啸警报・注意报・预报发布时，地图沿岸按等级上色，点开可看各区域的预计高度和第一波时间，
+  以及最近约30天的海啸信息
 - **长周期地震动**：气象厅发布了长周期地震动阶级（1～4）的地震，在列表里带"长周期N"标记；
   详情里显示阶级的含义、测到阶级1以上的观测点和 Sva，地图上用编号方块标出这些观测点
 - **余震分析**：地震详情里统计震中附近、主震之后的地震次数和最大余震，画出震级-时间图（M-T 图），
@@ -57,6 +60,7 @@ data/historic.json 历史大地震（震中、震级、伤亡人数、简介，�
 js/i18n.js        三种语言的界面文字，以及时间、深度、地名的本地化
 js/analysis.js    余震搜索、深度剖面的投影计算和预设剖面线
 js/charts.js      SVG 图表：M-T 图和深度剖面图
+js/alerts.js      南海海槽临时情报、海啸信息的读取和分级
 js/util.js        距离计算等通用小工具
 ```
 
@@ -67,6 +71,8 @@ Build command 留空，Build output directory 填 `/`。推送到 `main` 会自�
 
 ## 数据来源
 
+- 海啸：气象厅 `bosai/tsunami/data/`，沿岸区域形状来自 `bosai/common/const/geojson/tsunami.json`
+- 南海海槽地震临时情报：[气象厅防灾信息 XML](https://xml.kishou.go.jp/)（`eqvol_l.xml` 长期 feed）
 - 长周期地震动：[气象厅 長周期地震動に関する観測情報](https://www.data.jma.go.jp/eew/data/ltpgm/)（`bosai/ltpgm/data/list.json` 及各次报告）
 - 地震数据：[气象厅 防災情報 JSON](https://www.jma.go.jp/bosai/quake/data/list.json)，各地震度来自同目录下每次地震的详细报告（[地震情報](https://www.jma.go.jp/bosai/map.html#contents=earthquake_map)）
 - USGS 地震目录：[FDSN Event Web Service](https://earthquake.usgs.gov/fdsnws/event/1/)，日本周边大约 M4 以上较完整

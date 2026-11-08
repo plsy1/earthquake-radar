@@ -7,6 +7,16 @@ export const DETAIL_BASE = "https://www.jma.go.jp/bosai/quake/data/";
 export const LP_LIST = "https://www.jma.go.jp/bosai/ltpgm/data/list.json";
 export const LP_BASE = "https://www.jma.go.jp/bosai/ltpgm/data/";
 export const LP_PAGE = "https://www.data.jma.go.jp/eew/data/ltpgm/event.php?eventId=";
+// Tsunami reports and the coastline segments of JMA's tsunami forecast areas.
+export const TSUNAMI_LIST = "https://www.jma.go.jp/bosai/tsunami/data/list.json";
+export const TSUNAMI_BASE = "https://www.jma.go.jp/bosai/tsunami/data/";
+export const TSUNAMI_AREAS = "https://www.jma.go.jp/bosai/common/const/geojson/tsunami.json";
+export const TSUNAMI_PAGE = "https://www.jma.go.jp/bosai/map.html#contents=tsunami";
+// Nankai Trough notices come through JMA's long XML feed (about a week of entries).
+export const NANKAI_FEED = "https://www.data.jma.go.jp/developer/xml/feed/eqvol_l.xml";
+export const NANKAI_PAGE = "https://www.jma.go.jp/jma/kishou/know/jishin/nteq/index.html";
+export const ALERTS_REFRESH_MS = 60_000;
+export const NANKAI_REFRESH_MS = 5 * 60_000;
 // Colors for long-period classes 1–4.
 export const LP_COLOR = { "1": "#3aa6b9", "2": "#f2b134", "3": "#e8590c", "4": "#a61e4d" };
 export const REFRESH_MS = 60_000;
