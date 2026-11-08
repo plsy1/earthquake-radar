@@ -129,6 +129,19 @@ export function initMap(el, { basemap, features }) {
     replayCtl.hidden = true;
     replayBtn = L.DomUtil.create("button", "", replayCtl);
     replayBtn.type = "button";
+    const speedRow = L.DomUtil.create("div", "replay-speed", replayCtl);
+    replaySpeedLbl = L.DomUtil.create("span", "lbl", speedRow);
+    const seg = L.DomUtil.create("div", "seg", speedRow);
+    replaySpeedBtns = SPEED_CHOICES.map((v) => {
+      const b = L.DomUtil.create("button", "", seg);
+      b.type = "button";
+      b.dataset.v = String(v);
+      return b;
+    });
+    L.DomEvent.on(seg, "click", (ev) => {
+      const b = ev.target.closest("button[data-v]");
+      if (b) setReplaySpeed(b.dataset.v === "auto" ? "auto" : +b.dataset.v);
+    });
     replayInfo = L.DomUtil.create("div", "replay-info", replayCtl);
     replayNote = L.DomUtil.create("div", "replay-note", replayCtl);
     L.DomEvent.disableClickPropagation(replayCtl);
@@ -422,12 +435,43 @@ export function exitDetail() {
 // S wave carries the strong shaking, so a station lights up when it gets there.
 
 const VP = 7, VS = 4;                  // km/s: the usual rule of thumb for Japan
-const REPLAY_TARGET_S = 15;            // play faster than real time to fit about this long
-const REPLAY_SPEEDS = [1, 2, 3, 5, 8, 10, 15, 20, 30, 45, 60];
+const REPLAY_TARGET_S = 15;            // "auto" speed fits a replay into about this long
+const AUTO_SPEEDS = [1, 2, 3, 5, 8, 10, 15, 20, 30, 45, 60];
+const SPEED_CHOICES = ["auto", 1, 2, 5, 10, 20];
+const SPEED_KEY = "quake-radar.replaySpeed";
 let detailStations = null;             // { e, stations } of the open detail view
 let replay = null;                     // the running replay
 let replayDone = null;                 // { end, total } after a replay finishes
+let replaySpeed = loadReplaySpeed();   // "auto" or a multiple of real time
 let replayCtl = null, replayBtn = null, replayInfo = null, replayNote = null;
+let replaySpeedLbl = null, replaySpeedBtns = [];
+
+function loadReplaySpeed() {
+  try {
+    const v = localStorage.getItem(SPEED_KEY);
+    if (v && SPEED_CHOICES.includes(+v)) return +v;
+  } catch (_) { /* storage blocked: use the default */ }
+  return "auto";
+}
+
+/** Playback speed for a replay whose last station is reached `end` seconds in. */
+const speedFor = (end) => (replaySpeed === "auto"
+  ? AUTO_SPEEDS.find((v) => end / v <= REPLAY_TARGET_S) || AUTO_SPEEDS[AUTO_SPEEDS.length - 1]
+  : replaySpeed);
+
+/** Change the speed; a running replay carries on from the same moment. */
+function setReplaySpeed(v) {
+  replaySpeed = v;
+  try { localStorage.setItem(SPEED_KEY, String(v)); } catch (_) { /* remembered until reload */ }
+  const r = replay;
+  if (r) {
+    const now = performance.now();
+    const sim = ((now - r.start) / 1000) * r.speed;
+    r.speed = speedFor(r.end);
+    r.start = now - (sim / r.speed) * 1000;
+  }
+  paintReplay();
+}
 
 function showReplay(on) {
   if (replayCtl) replayCtl.hidden = !on;
@@ -438,6 +482,11 @@ function paintReplay() {
   if (!replayBtn) return;
   replayBtn.textContent = t(replay ? "replayStop" : replayDone ? "replayAgain" : "replayBtn");
   replayBtn.setAttribute("aria-pressed", String(!!replay));
+  replaySpeedLbl.textContent = t("replaySpeed");
+  for (const b of replaySpeedBtns) {
+    b.textContent = b.dataset.v === "auto" ? t("speedAuto") : b.dataset.v + "×";
+    b.setAttribute("aria-pressed", String(b.dataset.v === String(replaySpeed)));
+  }
   const info = replay
     ? t("replayInfo", { s: Math.floor(replay.now), x: replay.speed, n: replay.next, total: replay.queue.length })
     : replayDone ? t("replayDone", { s: Math.round(replayDone.end), total: replayDone.total }) : "";
@@ -457,7 +506,7 @@ function startReplay() {
     .map((s) => ({ s, at: Math.hypot(km(e.loc, s), depth) / VS }))
     .sort((a, b) => a.at - b.at);
   const end = queue[queue.length - 1].at;
-  const speed = REPLAY_SPEEDS.find((v) => end / v <= REPLAY_TARGET_S) || REPLAY_SPEEDS[REPLAY_SPEEDS.length - 1];
+  const speed = speedFor(end);
   const center = [e.loc.lat, e.loc.lon];
   detailLayer.clearLayers();
   addEpicenter(e);

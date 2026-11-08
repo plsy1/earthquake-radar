@@ -191,8 +191,10 @@ button:focus-visible,input:focus-visible,#list li:focus-visible{outline:2px soli
 .profile-ctl button{display:block;background:var(--panel);color:var(--ink);border:0;padding:5px 8px;font:600 12px var(--f-body);cursor:pointer}
 .profile-ctl button:hover{background:var(--hover)}
 .replay-ctl{background:var(--panel);color:var(--ink);max-width:270px}
-.replay-ctl button{display:block;width:100%;text-align:left;background:var(--panel);color:var(--ink);border:0;border-radius:4px;padding:6px 10px;font:600 12px var(--f-body);cursor:pointer}
-.replay-ctl button:hover{background:var(--hover)}
+.replay-ctl>button{display:block;width:100%;text-align:left;background:var(--panel);color:var(--ink);border:0;border-radius:4px;padding:6px 10px;font:600 12px var(--f-body);cursor:pointer}
+.replay-ctl>button:hover{background:var(--hover)}
+.replay-speed{display:flex;align-items:center;gap:6px;padding:0 10px 7px}
+.replay-speed .seg button{font-size:12px;padding:2px 7px}
 .replay-info,.replay-note{padding:0 10px 7px;font:12px/1.5 var(--f-body)}
 .replay-info{font-variant-numeric:tabular-nums}
 .replay-note{color:var(--muted)}
