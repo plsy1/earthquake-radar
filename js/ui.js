@@ -765,8 +765,6 @@ export function fillEewSection(sec, st, { alertOn, permission }) {
 
   sec.appendChild(el("div", "al-text", t("eewAbout")));
   sec.appendChild(el("div", "al-text", t("eewDisclaimerLong")));
-  sec.appendChild(el("div", "al-text", t("eewKmoniNote")));
-  sec.appendChild(link(t("eewKmoniLink"), "http://www.kmoni.bosai.go.jp/"));
   sec.appendChild(link("P2P地震情報", "https://www.p2pquake.net/"));
   sec.appendChild(link("Wolfx Project", "https://wolfx.jp/"));
 }
