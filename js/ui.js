@@ -1,6 +1,6 @@
 // Side panel: status line, controls, summary numbers, earthquake list, detail.
 import {
-  COLOR, DARKTEXT, LP_COLOR, LP_PAGE, NANKAI_PAGE, NEAR_KM, NEARBY_STATION_KM, ORDER, TSUNAMI_PAGE, UNKNOWN_COLOR, VS, depthBand,
+  COLOR, DARKTEXT, LP_COLOR, LP_PAGE, NANKAI_PAGE, NEAR_KM, NEARBY_STATION_KM, ORDER, TSUNAMI_PAGE, UNKNOWN_COLOR, depthBand,
 } from "./config.js";
 import { ago, depthText, fmtClock, fmtTime, intLabel, magText, pick, placeName, t } from "./i18n.js";
 import { mtChart, profileChart } from "./charts.js";
@@ -644,7 +644,7 @@ const eewBannerLevel = (ev) => (ev.cancel ? 0 : ev.warn ? 2 : 1);
 let eewBannerBound = false;
 
 /** The banner on the map for the warning being shown (null hides it). */
-export function renderEewBanner(ev, home, now) {
+export function renderEewBanner(ev, now) {
   const box = $("eew-banner");
   if (!box) return;
   if (!eewBannerBound) {
@@ -687,34 +687,34 @@ export function renderEewBanner(ev, home, now) {
   body.appendChild(top);
   const elapsed = el("div", "eew-time");
   elapsed.dataset.role = "elapsed";
-  const homeLine = el("div", "eew-home");
-  homeLine.dataset.role = "home";
-  body.append(elapsed, homeLine);
+  body.appendChild(elapsed);
   if (ev.assumed) body.appendChild(el("div", "eew-note", t("eewAssumed")));
+  // Areas exactly as JMA forecast them, with JMA's own arrival time for the strong shaking.
   if (ev.areas.length) {
     const areas = [...ev.areas].sort((a, b) => (ORDER.indexOf(b.from) - ORDER.indexOf(a.from)));
-    const shown = areas.slice(0, 6).map((a) => `${a.name} ${eewIntText(a)}`).join(" · ");
-    body.appendChild(el("div", "eew-areas", t("eewAreas", { list: shown }) + (areas.length > 6 ? " " + t("eewMore", { n: areas.length - 6 }) : "")));
+    const list = el("ul", "eew-areas");
+    list.appendChild(el("li", "lbl", t("eewAreasTitle")));
+    for (const a of areas.slice(0, 6)) {
+      const when = a.arrived ? t("eewArrived") : a.arrival ? t("eewArrive", { time: fmtClock(a.arrival) }) : "";
+      const li = el("li");
+      li.append(el("span", null, a.name), el("b", null, eewIntText(a)));
+      if (when) li.appendChild(el("span", "eew-when", when));
+      list.appendChild(li);
+    }
+    if (areas.length > 6) list.appendChild(el("li", "lbl", t("eewMore", { n: areas.length - 6 })));
+    body.appendChild(list);
   }
   body.appendChild(el("div", "eew-disc", t("eewDisclaimer")));
   box.appendChild(body);
-  tickEewBanner(ev, home, now);
+  tickEewBanner(ev, now);
 }
 
-/** Refresh the parts of the banner that change by the second. */
-export function tickEewBanner(ev, home, now) {
+/** Refresh the time since the earthquake began. */
+export function tickEewBanner(ev, now) {
   const box = $("eew-banner");
-  if (!ev || !box || box.hidden || box.dataset.id !== ev.id) return;
-  const elapsed = box.querySelector('[data-role="elapsed"]'), homeLine = box.querySelector('[data-role="home"]');
-  if (ev.origin) elapsed.textContent = t("eewOrigin", { time: fmtClock(ev.origin), s: Math.max(0, Math.round((now - ev.origin) / 1000)) });
-  if (ev.cancel) { homeLine.textContent = ""; homeLine.dataset.state = ""; return; }
-  if (!home) { homeLine.textContent = t("eewHomeNone"); homeLine.dataset.state = "none"; return; }
-  if (!ev.hypo || ev.assumed || !ev.origin) { homeLine.textContent = ""; homeLine.dataset.state = ""; return; }
-  const d = km(home, ev.hypo);
-  const sAt = +ev.origin + (Math.hypot(d, ev.hypo.depth ?? 10) / VS) * 1000;
-  const left = Math.round((sAt - now) / 1000);
-  homeLine.textContent = left > 0 ? t("eewHomeS", { s: left, d: Math.round(d) }) : t("eewHomeArrived", { d: Math.round(d) });
-  homeLine.dataset.state = left > 0 ? "coming" : "arrived";
+  if (!ev || !box || box.hidden || box.dataset.id !== ev.id || !ev.origin) return;
+  box.querySelector('[data-role="elapsed"]').textContent =
+    t("eewOrigin", { time: fmtClock(ev.origin), s: Math.max(0, Math.round((now - ev.origin) / 1000)) });
 }
 
 const EEW_STATUS_KEY = { open: "eewConnOpen", connecting: "eewConnConnecting", closed: "eewConnClosed" };
@@ -765,6 +765,8 @@ export function fillEewSection(sec, st, { alertOn, permission }) {
 
   sec.appendChild(el("div", "al-text", t("eewAbout")));
   sec.appendChild(el("div", "al-text", t("eewDisclaimerLong")));
+  sec.appendChild(el("div", "al-text", t("eewKmoniNote")));
+  sec.appendChild(link(t("eewKmoniLink"), "http://www.kmoni.bosai.go.jp/"));
   sec.appendChild(link("P2P地震情報", "https://www.p2pquake.net/"));
   sec.appendChild(link("Wolfx Project", "https://wolfx.jp/"));
 }

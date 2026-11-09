@@ -9,7 +9,7 @@ import { applyStatic, fmtClock, onLangChange, setLang, t } from "./i18n.js";
 import { loadHome, locateBrowser, makeHome, saveHome } from "./home.js";
 import {
   clearProfile, clearTsunami, drawAftershocks, drawEew, drawHome, drawLongPeriod, drawProfile, drawTsunami, drawQuakes, drawStations, enterDetail, exitDetail,
-  fitEew, fitProfile, tickEew, flyToView, initMap, onMapClick, setViewChangeHandler, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
+  fitProfile, focusQuake, flyToView, initMap, onMapClick, setViewChangeHandler, refreshMapLanguage, setHeatPoints, setHeatVisible, setHistoricVisible,
   setInundationVisible, setLegendSource, setNankaiVisible, setPickCursor, setPlatesVisible, setProfileHandler,
   setSegmentsVisible, setShelterHandler, setShelterType,
 } from "./map.js";
@@ -302,7 +302,6 @@ function setHome(home) {
   setHomeLabel(home);
   render();
   refreshDetail();
-  tickEewBanner(eewState().active, home, eewNow());
 }
 
 function setPicking(on) {
@@ -329,7 +328,8 @@ async function load() {
     const next = await fetcher();
     if (state.source !== source) return; // switched away while loading
     if (source === "usgs" && query !== `${usgsQuery().days}|${usgsQuery().minMag}`) return; // filters changed
-    if (f.seen) for (const e of next) if (!f.seen.has(e.eid)) f.fresh.add(e.eid);
+    const added = f.seen ? next.filter((e) => !f.seen.has(e.eid)) : [];
+    for (const e of added) f.fresh.add(e.eid);
     f.seen = new Set(next.map((e) => e.eid));
     f.query = query;
     // Re-render only when something changed, so hovering and reading aren't interrupted.
@@ -345,6 +345,7 @@ async function load() {
       render();
       if (state.selected) refreshDetail(); // keep the aftershock count current
     }
+    followNewest(added);
   } catch (err) {
     f.loading = false;
     f.failed = true;
@@ -473,7 +474,7 @@ $("alert-tsunami").addEventListener("click", () => openAlerts("tsunami"));
 $("alerts-back").addEventListener("click", closeAlerts);
 $("alert-eew").addEventListener("click", () => {
   const ev = eewState().active;
-  if (ev && ev.hypo && !ev.cancel) fitEew(ev, state.home);
+  if (ev && ev.hypo && !ev.cancel) focusQuake(ev.hypo, state.home);
   else openAlerts("eew");
 });
 $("alerts-body").addEventListener("change", (ev) => {
@@ -586,9 +587,11 @@ onLangChange(() => {
 });
 
 // ---- earthquake early warning ----
-// Reports arrive over WebSocket (see eew.js). A warning, or a forecast of intensity 4 or
-// more, moves the map to the epicenter once and, if the viewer turned it on, sounds an
-// alert and shows a desktop notification while the page is in the background.
+// Reports arrive over WebSocket (see eew.js) and are shown as JMA issued them. Nothing is
+// forecast here for other places (arrival times, wave fronts, local intensity): in Japan
+// that is a ground-motion forecast and needs JMA's licence. A warning, or a forecast of
+// intensity 4 or more, moves the map to the epicenter once and, if the viewer turned it
+// on, sounds an alert and shows a desktop notification while the page is in the background.
 
 let eewAlertOn = false;
 try { eewAlertOn = localStorage.getItem(EEW_ALERT_KEY) === "1"; } catch (_) { /* off */ }
@@ -651,32 +654,62 @@ function paintEew(st) {
   const ev = st.active;
   renderEewPill(st, isSignificant(ev));
   drawEew(ev);
-  renderEewBanner(ev, state.home, eewNow());
+  renderEewBanner(ev, eewNow());
   if (state.alerts.open) fillEewSection($("al-eew"), st, eewOpts());
-  if (ev && !eewTimer) eewTimer = setInterval(eewFrame, 200);
+  if (ev && !eewTimer) eewTimer = setInterval(eewFrame, 1000);
   if (!ev && eewTimer) { clearInterval(eewTimer); eewTimer = 0; }
 }
 
 function eewFrame() {
-  const now = eewNow(), ev = eewState().active;
-  tickEew(now);
-  tickEewBanner(ev, state.home, now);
+  tickEewBanner(eewState().active, eewNow());
 }
 
 onEewChange((st) => {
   paintEew(st);
   const ev = st.active;
   if (!ev) return;
+  if (ev.hypo && !ev.assumed && !ev.cancel) followQuake(ev.hypo, ev.id);
   const level = eewLevel(ev), before = eewHandled.get(ev.id) ?? -1;
   if (level <= before) return;
   eewHandled.set(ev.id, level);
-  if (level >= 1) {
-    if (ev.hypo && !ev.assumed) fitEew(ev, state.home);
-    eewAlert(ev, level);
-  }
+  if (level >= 1) eewAlert(ev, level);
 });
 startEew();
 if (new URLSearchParams(location.search).has("eewdemo")) setTimeout(runEewDemo, 1500);
+
+// ---- following new earthquakes ----
+// When an earthquake happens the map moves to it once: on its first early-warning report
+// if there is one, otherwise when it appears in the list. JMA uses the same event id for
+// both, so the same earthquake never moves the map twice. Viewing an earthquake's detail
+// or the depth profile is never interrupted.
+
+const FOLLOW_KEY = "quake-radar.follow";
+let followOn = true;
+try { followOn = localStorage.getItem(FOLLOW_KEY) !== "0"; } catch (_) { /* default on */ }
+$("follow").checked = followOn;
+$("follow").addEventListener("change", (e) => {
+  followOn = e.target.checked;
+  try { localStorage.setItem(FOLLOW_KEY, followOn ? "1" : "0"); } catch (_) { /* not remembered */ }
+});
+const followed = new Set();
+
+function followQuake(loc, id) {
+  if (followed.has(id)) return;
+  followed.add(id);
+  if (!followOn || state.selected || state.profile.open || state.profile.picking || state.picking) return;
+  focusQuake(loc, state.home);
+}
+
+/** Newly listed earthquakes: follow the newest one that is shown and happened recently. */
+function followNewest(added) {
+  if (!added.length) return;
+  const shown = new Set(visibleEvents().map((e) => e.eid));
+  const recent = added
+    .filter((e) => shown.has(e.eid) && Date.now() - e.time < 30 * 60_000)
+    .sort((a, b) => b.time - a.time)[0];
+  for (const e of added) if (e !== recent) followed.add(e.eid); // older ones never move the map later
+  if (recent) followQuake(recent.loc, recent.eid);
+}
 
 $("refresh").addEventListener("click", () => { load(); loadAlerts(true); });
 loadAlerts(true);

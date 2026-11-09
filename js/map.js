@@ -704,51 +704,31 @@ export function drawAftershocks(main, list, radiusKm, tooltipFor, onSelect) {
   }
 }
 
-// ---- live early warning: epicenter and wave fronts growing in real time ----
+// ---- live early warning: the epicenter JMA reported ----
+// Only what JMA announced is drawn. Wave fronts or arrival times worked out here for
+// other places would be a ground-motion forecast, which needs JMA's licence in Japan.
 
-let eewLayer = null, eewEv = null, eewRings = null, eewKey = "";
-
-const waveRing = (center, v) => L.circle(center, v === VP
-  ? { radius: 1, interactive: false, color: "#2c6fbb", weight: 1.5, dashArray: "6 5", fill: false }
-  : { radius: 1, interactive: false, color: "#d7261e", weight: 2.5, fillColor: "#d7261e", fillOpacity: 0.07 });
+let eewLayer = null, eewKey = "";
 
 /** Mark the epicenter of a live early warning, or clear it (null). */
 export function drawEew(ev) {
-  const ok = ev && ev.hypo && ev.origin && !ev.assumed && !ev.cancel;
-  const key = ok ? [ev.id, ev.hypo.lat, ev.hypo.lon, ev.hypo.depth, +ev.origin].join("|") : "";
-  eewEv = ok ? ev : null;
+  const ok = ev && ev.hypo && !ev.assumed && !ev.cancel;
+  const key = ok ? [ev.id, ev.hypo.lat, ev.hypo.lon].join("|") : "";
   if (key === eewKey) return;
   eewKey = key;
   eewLayer.clearLayers();
-  eewRings = null;
   if (!ok) return;
-  const c = [ev.hypo.lat, ev.hypo.lon];
-  L.marker(c, {
+  L.marker([ev.hypo.lat, ev.hypo.lon], {
     icon: L.divIcon({ className: "", html: '<div class="eew-epi"><div class="epi"></div></div>', iconSize: [24, 24], iconAnchor: [12, 12] }),
     interactive: false, keyboard: false, zIndexOffset: 2000,
   }).addTo(eewLayer);
-  eewRings = [{ v: VP, ring: waveRing(c, VP) }, { v: VS, ring: waveRing(c, VS) }];
 }
 
-/** Grow the wave fronts to where they are at `now` (ms). */
-export function tickEew(now) {
-  if (!eewRings || !eewEv) return;
-  const depth = eewEv.hypo.depth ?? 10;
-  const sec = (now - eewEv.origin) / 1000;
-  for (const w of eewRings) {
-    const reach = w.v * sec;
-    const on = reach > depth && reach < 2500;
-    if (on) w.ring.setRadius(Math.sqrt(reach * reach - depth * depth) * 1000);
-    if (on && !eewLayer.hasLayer(w.ring)) w.ring.addTo(eewLayer);
-    if (!on && eewLayer.hasLayer(w.ring)) eewLayer.removeLayer(w.ring);
-  }
-}
-
-/** Bring the epicenter (and "my location", when near enough) into view. */
-export function fitEew(ev, home) {
-  if (!ev?.hypo || !hasSize()) return;
-  const pts = [[ev.hypo.lat, ev.hypo.lon]];
-  if (home && km(home, ev.hypo) < 700) pts.push([home.lat, home.lon]);
+/** Bring an epicenter {lat, lon} (and "my location", when near enough) into view. */
+export function focusQuake(loc, home) {
+  if (!loc || !hasSize()) return;
+  const pts = [[loc.lat, loc.lon]];
+  if (home && km(home, loc) < 700) pts.push([home.lat, home.lon]);
   if (pts.length > 1) map.flyToBounds(L.latLngBounds(pts).pad(0.5), { duration: 0.8, maxZoom: 8 });
   else map.flyTo(pts[0], Math.min(8, Math.max(6, map.getZoom())), { duration: 0.8 });
 }
