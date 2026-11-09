@@ -100,6 +100,7 @@ export function initMap(el, { basemap, features }) {
   }).observe(el);
   // Any move that isn't one of the preset views means no preset is current any more.
   map.on("movestart", () => { if (!movingToPreset && onViewChange) onViewChange(null); });
+  map.on("zoomend", sizeQuakes);
 
   const legend = L.control({ position: "bottomleft" });
   legend.onAdd = () => {
@@ -357,20 +358,41 @@ export function drawHome(home) {
   }).addTo(homeLayer);
 }
 
+// Circle size: magnitude sets it (M2 ≈ 3 px radius, M5 ≈ 9, M7 ≈ 13 at the all-Japan
+// view); circles shrink when there are many so they don't bury the map, and grow a
+// little as the viewer zooms in.
+let quakeMarkers = [];
+const baseRadius = (m) => (isNaN(m) ? 3 : Math.max(2.5, 2 * m - 1));
+function quakeScale(n) {
+  const density = Math.min(1, Math.max(0.6, (200 / Math.max(n, 1)) ** 0.25));
+  const zoom = Math.min(1.4, Math.max(0.8, 1 + (map.getZoom() - 5) * 0.12));
+  return density * zoom;
+}
+function sizeQuakes() {
+  const k = quakeScale(quakeMarkers.length);
+  for (const { c, base } of quakeMarkers) {
+    const r = Math.max(2.5, base * k);
+    c.setRadius(r);
+    const tip = c.getTooltip();
+    if (tip) tip.options.offset = L.point(0, -r);
+  }
+}
+
 /** Draw one circle per earthquake; `list` is newest first. Clicking a circle selects it. */
 export function drawQuakes(list, { tooltipFor, onSelect }) {
   quakeLayer.clearLayers();
   // Strongest (or largest) and newest on top.
   const drawOrder = [...list].sort((a, b) => rank(a.maxi) - rank(b.maxi) || (+a.mag || 0) - (+b.mag || 0) || a.time - b.time);
-  for (const e of drawOrder) {
-    const m = +e.mag;
-    const radius = isNaN(m) ? 5 : Math.max(4, 3 + m * 2.4);
+  const k = quakeScale(list.length);
+  quakeMarkers = drawOrder.map((e) => {
+    const base = baseRadius(+e.mag), radius = Math.max(2.5, base * k);
     const c = L.circleMarker([e.loc.lat, e.loc.lon], {
-      radius, color: "#222", weight: 0.8, fillColor: quakeColor(e), fillOpacity: 0.88,
+      radius, color: "#222", weight: 0.6, fillColor: quakeColor(e), fillOpacity: 0.85,
     }).bindTooltip(() => tooltipFor(e), { direction: "top", offset: [0, -radius] })
       .on("click", () => onSelect(e));
     c.addTo(quakeLayer);
-  }
+    return { c, base };
+  });
   if (list.length) {
     const latest = list[0];
     L.marker([latest.loc.lat, latest.loc.lon], {
